@@ -1,18 +1,18 @@
-'use client';
+"use client";
 
-import React, { useEffect, useRef, useState } from 'react';
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
-import { BottomNav } from '@/components/bottom-nav';
+import React, { useEffect, useRef, useState } from "react";
+import mapboxgl from "mapbox-gl";
+import "mapbox-gl/dist/mapbox-gl.css";
+import { BottomNav } from "@/components/bottom-nav";
 
 // Set your Mapbox access token
-mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || '';
+mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || "";
 
 interface MapProps {
   className?: string;
 }
 
-const MapComponent: React.FC<MapProps> = ({ className = '' }) => {
+const MapComponent: React.FC<MapProps> = ({ className = "" }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [lng, setLng] = useState(-74.5);
@@ -25,37 +25,40 @@ const MapComponent: React.FC<MapProps> = ({ className = '' }) => {
     if (mapContainer.current) {
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
-        style: 'mapbox://styles/mapbox/streets-v12',
+        style: "mapbox://styles/mapbox/dark-v11",
         center: [lng, lat],
-        zoom: zoom
+        zoom: zoom,
       });
 
       // Add navigation control
-      map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+      map.current.addControl(new mapboxgl.NavigationControl(), "top-right");
 
       // Add geolocate control
       map.current.addControl(
         new mapboxgl.GeolocateControl({
           positionOptions: {
-            enableHighAccuracy: true
+            enableHighAccuracy: true,
           },
           trackUserLocation: true,
-          showUserHeading: true
+          showUserHeading: true,
         }),
-        'top-right'
+        "top-right"
       );
 
       // Add fullscreen control
-      map.current.addControl(new mapboxgl.FullscreenControl(), 'top-right');
+      map.current.addControl(new mapboxgl.FullscreenControl(), "top-right");
 
       // Add scale control
-      map.current.addControl(new mapboxgl.ScaleControl({
-        maxWidth: 80,
-        unit: 'metric'
-      }), 'bottom-left');
+      map.current.addControl(
+        new mapboxgl.ScaleControl({
+          maxWidth: 80,
+          unit: "metric",
+        }),
+        "bottom-left"
+      );
 
       // Listen for map events
-      map.current.on('move', () => {
+      map.current.on("move", () => {
         if (map.current) {
           setLng(parseFloat(map.current.getCenter().lng.toFixed(4)));
           setLat(parseFloat(map.current.getCenter().lat.toFixed(4)));
@@ -64,14 +67,14 @@ const MapComponent: React.FC<MapProps> = ({ className = '' }) => {
       });
 
       // Add a marker at the center
-      new mapboxgl.Marker()
-        .setLngLat([lng, lat])
-        .addTo(map.current);
+      new mapboxgl.Marker().setLngLat([lng, lat]).addTo(map.current);
 
       // Add a popup
       new mapboxgl.Popup({ offset: 25 })
         .setLngLat([lng, lat])
-        .setHTML('<h3>Welcome to Territory!</h3><p>This is your fitness territory map.</p>')
+        .setHTML(
+          "<h3>Welcome to Territory!</h3><p>This is your fitness territory map.</p>"
+        )
         .addTo(map.current);
     }
 
@@ -92,11 +95,11 @@ const MapComponent: React.FC<MapProps> = ({ className = '' }) => {
           <div>Zoom: {zoom}</div>
         </div>
       </div>
-      
-      <div 
-        ref={mapContainer} 
+
+      <div
+        ref={mapContainer}
         className="w-full h-full rounded-lg"
-        style={{ minHeight: '500px' }}
+        style={{ minHeight: "500px" }}
       />
     </div>
   );
@@ -112,13 +115,11 @@ export default function MapPage() {
             Explore territories and compete with clans in your fitness journey
           </p>
         </div>
-        
+
         <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20">
           <MapComponent className="h-[600px]" />
         </div>
       </div>
-      
-     
     </div>
   );
 }
