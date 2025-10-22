@@ -52,7 +52,7 @@ const mockLeaderboard = [
   { rank: 5, name: "NightHunter", score: 26780, territory: 25, avatar: "N" },
 ];
 
-export function ClansPage() {
+function ClansPage() {
   const [activeTab, setActiveTab] = useState<"clans" | "leaderboard">("clans");
 
   return (

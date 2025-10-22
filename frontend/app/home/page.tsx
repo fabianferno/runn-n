@@ -3,34 +3,9 @@
 import { useState } from "react";
 import { GlassCard } from "@/components/glass-card";
 import { StatCard } from "@/components/stat-card";
-import { TerritoryMap } from "@/components/territory-map";
 import { FloatingActionButton } from "@/components/floating-action-button";
 import { BottomNav } from "@/components/bottom-nav";
-import { MapComponent } from "../map/page";
-
-const mockTerritories = [
-  {
-    id: "1",
-    name: "Phoenix Squad",
-    color: "#ff6b6b",
-    percentage: 28,
-    clan: "Phoenix",
-  },
-  {
-    id: "2",
-    name: "Dragon Force",
-    color: "#4ecdc4",
-    percentage: 22,
-    clan: "Dragon",
-  },
-  {
-    id: "3",
-    name: "Shadow Ops",
-    color: "#95e1d3",
-    percentage: 15,
-    clan: "Shadow",
-  },
-];
+import { MapComponent } from "@/components/map-component";
 
 export function HomePage() {
   const [isCapturing, setIsCapturing] = useState(false);
@@ -75,8 +50,30 @@ export function HomePage() {
 
       {/* Main Map */}
       <div className="px-4 py-6 animate-scale-in">
-        <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20">
-          <MapComponent className="h-[600px]" />
+        <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-white/20">
+          <MapComponent
+            className="h-[400px]"
+            initialCenter={[-74.5, 40]}
+            initialZoom={10}
+            mapStyle="mapbox://styles/mapbox/streets-v12"
+            showControls={true}
+            showNavigationControl={true}
+            showGeolocateControl={true}
+            showFullscreenControl={false}
+            showScaleControl={true}
+            showCoordinates={false}
+            height="400px"
+            useCurrentLocation={true}
+            onMapLoad={(map) => {
+              console.log("Map loaded:", map);
+            }}
+            onMapMove={(lng, lat, zoom) => {
+              console.log("Map moved:", { lng, lat, zoom });
+            }}
+            onLocationFound={(lng, lat) => {
+              console.log("Current location found:", { lng, lat });
+            }}
+          />
         </div>
       </div>
 
