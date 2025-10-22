@@ -12,7 +12,7 @@ interface MapProps {
   className?: string;
 }
 
-const MapComponent: React.FC<MapProps> = ({ className = "" }) => {
+export const MapComponent: React.FC<MapProps> = ({ className = "" }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [lng, setLng] = useState(-74.5);
@@ -20,7 +20,7 @@ const MapComponent: React.FC<MapProps> = ({ className = "" }) => {
   const [zoom, setZoom] = useState(9);
 
   useEffect(() => {
-    if (map.current) return; // initialize map only once
+    if (map.current) return;
 
     if (mapContainer.current) {
       map.current = new mapboxgl.Map({
@@ -65,17 +65,6 @@ const MapComponent: React.FC<MapProps> = ({ className = "" }) => {
           setZoom(parseFloat(map.current.getZoom().toFixed(2)));
         }
       });
-
-      // Add a marker at the center
-      new mapboxgl.Marker().setLngLat([lng, lat]).addTo(map.current);
-
-      // Add a popup
-      new mapboxgl.Popup({ offset: 25 })
-        .setLngLat([lng, lat])
-        .setHTML(
-          "<h3>Welcome to Territory!</h3><p>This is your fitness territory map.</p>"
-        )
-        .addTo(map.current);
     }
 
     // Cleanup function

@@ -6,6 +6,7 @@ import { StatCard } from "@/components/stat-card";
 import { TerritoryMap } from "@/components/territory-map";
 import { FloatingActionButton } from "@/components/floating-action-button";
 import { BottomNav } from "@/components/bottom-nav";
+import { MapComponent } from "../map/page";
 
 const mockTerritories = [
   {
@@ -74,7 +75,9 @@ export function HomePage() {
 
       {/* Main Map */}
       <div className="px-4 py-6 animate-scale-in">
-        <TerritoryMap territories={mockTerritories} userTerritory={35} />
+        <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20">
+          <MapComponent className="h-[600px]" />
+        </div>
       </div>
 
       {/* Active Zones */}
