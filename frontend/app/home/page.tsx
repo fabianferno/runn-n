@@ -27,6 +27,33 @@ export function HomePage() {
           </div>
           <div className="w-10 h-10 rounded-full bg-primary animate-subtle-bounce" />
         </div>
+        <div className="px-4 py-6 animate-scale-in">
+          <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-white/20">
+            <MapComponent
+              className="h-[400px]"
+              initialCenter={[-74.5, 40]}
+              initialZoom={10}
+              mapStyle="mapbox://styles/mapbox/standard"
+              showControls={true}
+              showNavigationControl={true}
+              showGeolocateControl={true}
+              showFullscreenControl={false}
+              showScaleControl={true}
+              showCoordinates={false}
+              height="500px"
+              useCurrentLocation={true}
+              onMapLoad={(map) => {
+                console.log("Map loaded:", map);
+              }}
+              onMapMove={(lng, lat, zoom) => {
+                console.log("Map moved:", { lng, lat, zoom });
+              }}
+              onLocationFound={(lng, lat) => {
+                console.log("Current location found:", { lng, lat });
+              }}
+            />
+          </div>
+        </div>
 
         {/* Quick Stats */}
         <div className="grid grid-cols-3 gap-2">
@@ -49,33 +76,6 @@ export function HomePage() {
       </div>
 
       {/* Main Map */}
-      <div className="px-4 py-6 animate-scale-in">
-        <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-white/20">
-          <MapComponent
-            className="h-[400px]"
-            initialCenter={[-74.5, 40]}
-            initialZoom={10}
-            mapStyle="mapbox://styles/mapbox/streets-v12"
-            showControls={true}
-            showNavigationControl={true}
-            showGeolocateControl={true}
-            showFullscreenControl={false}
-            showScaleControl={true}
-            showCoordinates={false}
-            height="400px"
-            useCurrentLocation={true}
-            onMapLoad={(map) => {
-              console.log("Map loaded:", map);
-            }}
-            onMapMove={(lng, lat, zoom) => {
-              console.log("Map moved:", { lng, lat, zoom });
-            }}
-            onLocationFound={(lng, lat) => {
-              console.log("Current location found:", { lng, lat });
-            }}
-          />
-        </div>
-      </div>
 
       {/* Active Zones */}
       <div className="px-4 py-4">

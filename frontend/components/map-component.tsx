@@ -139,6 +139,14 @@ export const MapComponent: React.FC<MapComponentProps> = ({
         style: mapStyle,
         center: [lng, lat],
         zoom: zoom,
+        config: {
+          basemap: {
+            lightPreset: "day",
+            colorMotorways: "#2e89ff",
+            showPedestrianRoads: true,
+            show3dObjects: false,
+          },
+        },
       });
 
       // Add controls conditionally
