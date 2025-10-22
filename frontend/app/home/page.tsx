@@ -17,7 +17,7 @@ export function HomePage() {
 
   return (
     <main className="min-h-screen bg-background pb-24">
-      <div className="sticky top-0 z-20 pt-4 px-4 pb-4 bg-background animate-fade-in">
+      <div className=" top-0 z-20 pt-4 px-4 pb-4 bg-background animate-fade-in">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-3xl font-bold text-foreground">Territory</h1>
