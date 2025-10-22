@@ -1,0 +1,35 @@
+node_modules
+.env
+coverage
+coverage.json
+typechain
+typechain-types
+
+# Hardhat files
+cache
+artifacts
+
+# IDE files
+.vscode
+.idea
+node_modules
+package-lock.json
+yarn.lock
+bun.lockb
+pnpm-lock.yaml
+pnpm-workspace.yaml
+pnpm-workspace.yaml.lock
+pnpm-workspace.yaml.lock.json
+pnpm-workspace.yaml.lock.json.lock
+pnpm-workspace.yaml.lock.json.lock.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Build outputs
+dist
+build
