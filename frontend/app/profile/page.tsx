@@ -4,7 +4,7 @@ import { GlassCard } from "@/components/glass-card";
 import { StatCard } from "@/components/stat-card";
 import { BottomNav } from "@/components/bottom-nav";
 
-export function ProfilePage() {
+function ProfilePage() {
   return (
     <main className="min-h-screen bg-background pb-24">
       <div className="sticky top-0 z-20 pt-4 px-4 pb-6 bg-background animate-fade-in">
@@ -62,7 +62,6 @@ export function ProfilePage() {
             ))}
           </div>
         </div>
-
         {/* Personal Records */}
         <div>
           <h2 className="text-lg font-bold text-foreground mb-3">
@@ -100,7 +99,6 @@ export function ProfilePage() {
             ))}
           </div>
         </div>
-
         {/* Activity Timeline */}
         <div>
           <h2 className="text-lg font-bold text-foreground mb-3">
@@ -141,7 +139,6 @@ export function ProfilePage() {
             ))}
           </div>
         </div>
-
         {/* Settings */}
         <div>
           <h2 className="text-lg font-bold text-foreground mb-3">Settings</h2>
