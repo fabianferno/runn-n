@@ -33,7 +33,7 @@ export function HomePage() {
               className="h-[400px]"
               initialCenter={[-74.5, 40]}
               initialZoom={10}
-              mapStyle="mapbox://styles/mapbox/standard"
+              mapStyle="mapbox://styles/mapbox/outdoors-v12"
               showControls={true}
               showNavigationControl={true}
               showGeolocateControl={true}
@@ -42,6 +42,8 @@ export function HomePage() {
               showCoordinates={false}
               height="500px"
               useCurrentLocation={true}
+              hideBuildingLabels={false}
+              hidePoiLabels={false}
               onMapLoad={(map) => {
                 console.log("Map loaded:", map);
               }}

@@ -20,6 +20,9 @@ interface MapComponentProps {
   showCoordinates?: boolean;
   height?: string;
   useCurrentLocation?: boolean;
+  hideLabels?: boolean;
+  hideBuildingLabels?: boolean;
+  hidePoiLabels?: boolean;
   onMapLoad?: (map: mapboxgl.Map) => void;
   onMapMove?: (lng: number, lat: number, zoom: number) => void;
   onLocationFound?: (lng: number, lat: number) => void;
@@ -38,6 +41,9 @@ export const MapComponent: React.FC<MapComponentProps> = ({
   showCoordinates = true,
   height = "500px",
   useCurrentLocation = false,
+  hideLabels = false,
+  hideBuildingLabels = false,
+  hidePoiLabels = false,
   onMapLoad,
   onMapMove,
   onLocationFound,
@@ -123,6 +129,94 @@ export const MapComponent: React.FC<MapComponentProps> = ({
     );
   }, [onLocationFound]);
 
+  // Function to hide labels based on configuration
+  const hideMapLabels = useCallback(
+    (mapInstance: mapboxgl.Map) => {
+      if (!mapInstance) return;
+
+      try {
+        const layers = mapInstance.getStyle().layers;
+        console.log(
+          "Available layers:",
+          layers.map((l) => ({ id: l.id, type: l.type }))
+        );
+
+        layers.forEach((layer) => {
+          if (layer.type === "symbol") {
+            const layerId = layer.id.toLowerCase();
+            console.log("Processing symbol layer:", layerId);
+
+            // Hide all labels if hideLabels is true
+            if (hideLabels) {
+              console.log("Hiding all labels - layer:", layerId);
+              mapInstance.setLayoutProperty(layerId, "visibility", "none");
+            }
+            // Hide building labels specifically
+            else if (hideBuildingLabels) {
+              // More aggressive approach - hide most symbol layers that could contain building names
+              if (
+                layerId.includes("building") ||
+                layerId.includes("poi") ||
+                layerId.includes("label") ||
+                layerId.includes("place") ||
+                layerId.includes("name") ||
+                layerId.includes("text") ||
+                layerId.includes("symbol") ||
+                layerId.includes("annotation") ||
+                layerId.includes("poi-label") ||
+                layerId.includes("place-label") ||
+                layerId.includes("building-label")
+              ) {
+                console.log("Hiding building/POI labels - layer:", layerId);
+                mapInstance.setLayoutProperty(layerId, "visibility", "none");
+              }
+            }
+            // Hide POI labels specifically
+            else if (
+              hidePoiLabels &&
+              (layerId.includes("poi") ||
+                layerId.includes("place") ||
+                layerId.includes("label") ||
+                layerId.includes("name"))
+            ) {
+              console.log("Hiding POI labels - layer:", layerId);
+              mapInstance.setLayoutProperty(layerId, "visibility", "none");
+            }
+          }
+        });
+
+        // Additional approach: Try to hide labels using paint properties
+        if (hideBuildingLabels || hidePoiLabels) {
+          layers.forEach((layer) => {
+            if (layer.type === "symbol") {
+              const layerId = layer.id.toLowerCase();
+              if (
+                layerId.includes("label") ||
+                layerId.includes("text") ||
+                layerId.includes("name")
+              ) {
+                try {
+                  // Try to make text transparent
+                  mapInstance.setPaintProperty(layerId, "text-opacity", 0);
+                  mapInstance.setPaintProperty(layerId, "text-halo-blur", 0);
+                } catch (error) {
+                  // Ignore errors if properties don't exist
+                  console.log(
+                    "Paint property not available for layer:",
+                    layerId
+                  );
+                }
+              }
+            }
+          });
+        }
+      } catch (error) {
+        console.warn("Error hiding map labels:", error);
+      }
+    },
+    [hideLabels, hideBuildingLabels, hidePoiLabels]
+  );
+
   // Get current location on mount if requested
   useEffect(() => {
     if (useCurrentLocation) {
@@ -186,6 +280,17 @@ export const MapComponent: React.FC<MapComponentProps> = ({
       // Call onMapLoad callback
       if (map.current) {
         handleMapLoad(map.current);
+
+        // Hide labels after map loads
+        hideMapLabels(map.current);
+
+        // Also try hiding labels after a short delay in case style isn't fully loaded
+        setTimeout(() => {
+          if (map.current) {
+            console.log("Retrying label hiding after delay...");
+            hideMapLabels(map.current);
+          }
+        }, 1000);
       }
 
       // Listen for map events
@@ -201,6 +306,14 @@ export const MapComponent: React.FC<MapComponentProps> = ({
 
           // Call onMapMove callback
           handleMapMove(newLng, newLat, newZoom);
+        }
+      });
+
+      // Listen for style changes and re-hide labels
+      map.current.on("styledata", () => {
+        if (map.current) {
+          console.log("Style data changed, re-hiding labels...");
+          hideMapLabels(map.current);
         }
       });
     }
