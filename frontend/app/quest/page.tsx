@@ -6,6 +6,7 @@ import { BottomNav } from "@/components/bottom-nav";
 import { FloatingActionButton } from "@/components/floating-action-button";
 import { CameraComponent } from "@/components/camera-component";
 import { LocationVerificationComponent } from "@/components/location-verification-component";
+import { uploadToIPFSAndMint } from "@/lib/ipfs-utils";
 
 
 
@@ -154,24 +155,12 @@ export function QuestPage() {
   const handleLocationVerified = async (proofs: any) => {
     if (selectedQuest && selectedQuest.photo) {
       try {
-        // Upload image to IPFS
-        const uploadResponse = await fetch('/api/upload-to-ipfs', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            imageData: selectedQuest.photo,
-            questId: selectedQuest.id,
-            questTitle: selectedQuest.title,
-          }),
-        });
-
-        if (!uploadResponse.ok) {
-          throw new Error('Failed to upload to IPFS');
-        }
-
-        const uploadResult = await uploadResponse.json();
+        // Upload image to IPFS and mint datacoin
+        const uploadResult = await uploadToIPFSAndMint(
+          selectedQuest.photo,
+          selectedQuest.id,
+          selectedQuest.title
+        );
         
         if (uploadResult.success) {
           // Update quest status to completed with IPFS hash
