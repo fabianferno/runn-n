@@ -25,9 +25,11 @@ export function CameraComponent({ quest, onPhotoTaken, onClose }: CameraComponen
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
+  const [showUpload, setShowUpload] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     startCamera();
@@ -143,6 +145,19 @@ export function CameraComponent({ quest, onPhotoTaken, onClose }: CameraComponen
     startCamera();
   };
 
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        setCapturedPhoto(result);
+        setShowUpload(false);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
       <GlassCard className="w-full max-w-md p-6">
@@ -169,46 +184,107 @@ export function CameraComponent({ quest, onPhotoTaken, onClose }: CameraComponen
 
         {!capturedPhoto ? (
           <div className="space-y-4">
-            {/* Camera Preview */}
-            <div className="relative bg-black rounded-lg overflow-hidden">
-              {isStreaming && isCameraReady ? (
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="w-full h-64 object-cover"
-                />
-              ) : (
-                <div className="w-full h-64 flex items-center justify-center">
-                  <div className="text-white text-center">
-                    <div className="text-4xl mb-2">📷</div>
-                    <p>{isStreaming ? "Camera loading..." : "Starting camera..."}</p>
-                    {!isCameraReady && isStreaming && (
-                      <p className="text-xs mt-2 opacity-75">Please wait for camera to initialize</p>
-                    )}
-                  </div>
-                </div>
-              )}
-              <canvas ref={canvasRef} className="hidden" />
+            {/* Mode Toggle */}
+            <div className="flex bg-white/5 rounded-lg p-1">
+              <button
+                onClick={() => setShowUpload(false)}
+                className={`flex-1 px-3 py-2 rounded text-sm transition-colors ${
+                  !showUpload 
+                    ? 'bg-primary/80 text-white' 
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                📷 Camera
+              </button>
+              <button
+                onClick={() => setShowUpload(true)}
+                className={`flex-1 px-3 py-2 rounded text-sm transition-colors ${
+                  showUpload 
+                    ? 'bg-primary/80 text-white' 
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                📁 Upload
+              </button>
             </div>
 
-            {/* Camera Controls */}
-            <div className="flex gap-3">
-              <button
-                onClick={onClose}
-                className="flex-1 px-4 py-2 bg-gray-500/20 text-gray-300 rounded-lg hover:bg-gray-500/30 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={capturePhoto}
-                disabled={!isCameraReady}
-                className="flex-1 px-4 py-2 bg-primary/80 text-white rounded-lg hover:bg-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isCameraReady ? "Capture Photo" : "Camera Loading..."}
-              </button>
-            </div>
+            {!showUpload ? (
+              <>
+                {/* Camera Preview */}
+                <div className="relative bg-black rounded-lg overflow-hidden">
+                  {isStreaming && isCameraReady ? (
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="w-full h-64 object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-64 flex items-center justify-center">
+                      <div className="text-white text-center">
+                        <div className="text-4xl mb-2">📷</div>
+                        <p>{isStreaming ? "Camera loading..." : "Starting camera..."}</p>
+                        {!isCameraReady && isStreaming && (
+                          <p className="text-xs mt-2 opacity-75">Please wait for camera to initialize</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  <canvas ref={canvasRef} className="hidden" />
+                </div>
+
+                {/* Camera Controls */}
+                <div className="flex gap-3">
+                  <button
+                    onClick={onClose}
+                    className="flex-1 px-4 py-2 bg-gray-500/20 text-gray-300 rounded-lg hover:bg-gray-500/30 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={capturePhoto}
+                    disabled={!isCameraReady}
+                    className="flex-1 px-4 py-2 bg-primary/80 text-white rounded-lg hover:bg-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isCameraReady ? "Capture Photo" : "Camera Loading..."}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Upload Area */}
+                <div className="border-2 border-dashed border-gray-500/30 rounded-lg p-6 text-center">
+                  <div className="text-4xl mb-3">📁</div>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Choose an image from your device
+                  </p>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-4 py-2 bg-primary/80 text-white rounded-lg hover:bg-primary transition-colors"
+                  >
+                    Choose File
+                  </button>
+                </div>
+
+                {/* Upload Controls */}
+                <div className="flex gap-3">
+                  <button
+                    onClick={onClose}
+                    className="flex-1 px-4 py-2 bg-gray-500/20 text-gray-300 rounded-lg hover:bg-gray-500/30 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         ) : (
           <div className="space-y-4">

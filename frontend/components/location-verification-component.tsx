@@ -44,6 +44,10 @@ export function LocationVerificationComponent({
       const APP_SECRET = process.env.NEXT_PUBLIC_RECLAIM_APP_SECRET || '';
       const PROVIDER_ID = process.env.NEXT_PUBLIC_RECLAIM_PROVIDER_ID || '';
 
+      if (!APP_ID || !APP_SECRET || !PROVIDER_ID) {
+        throw new Error('Reclaim credentials not configured');
+      }
+
       // Initialize the Reclaim SDK with your credentials
       const reclaimProofRequest = await ReclaimProofRequest.init(APP_ID, APP_SECRET, PROVIDER_ID);
 
@@ -79,6 +83,17 @@ export function LocationVerificationComponent({
       // Open in the same page as requested
       window.location.href = requestUrl;
     }
+  };
+
+  const completeVerification = () => {
+    // For testing purposes - simulate successful verification
+    const mockProofs = {
+      questId: quest.id,
+      location: quest.location,
+      timestamp: new Date().toISOString(),
+      verified: true
+    };
+    onVerified(mockProofs);
   };
 
   return (
@@ -177,13 +192,21 @@ export function LocationVerificationComponent({
               </p>
             </div>
 
-            {/* Cancel Button */}
-            <button
-              onClick={onClose}
-              className="w-full px-4 py-2 bg-gray-500/20 text-gray-300 rounded-lg hover:bg-gray-500/30 transition-colors"
-            >
-              Cancel Verification
-            </button>
+            {/* Action Buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={completeVerification}
+                className="flex-1 px-4 py-2 bg-green-500/80 text-white rounded-lg hover:bg-green-500 transition-colors"
+              >
+                Complete Quest (Test)
+              </button>
+              <button
+                onClick={onClose}
+                className="flex-1 px-4 py-2 bg-gray-500/20 text-gray-300 rounded-lg hover:bg-gray-500/30 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         )}
 
