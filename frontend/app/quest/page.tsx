@@ -24,6 +24,8 @@ interface Quest {
     confidence: number;
     explanation: string;
   };
+  ipfsHash?: string;
+  ipfsUrl?: string;
 }
 
 export function QuestPage() {
@@ -149,13 +151,55 @@ export function QuestPage() {
     }
   };
 
-  const handleLocationVerified = (proofs: any) => {
-    if (selectedQuest) {
-      // Update quest status to completed
-      const updatedQuest = { ...selectedQuest, status: "completed" as const };
-      setSelectedQuest(updatedQuest);
-      setShowLocationVerification(false);
-      setSelectedQuest(null);
+  const handleLocationVerified = async (proofs: any) => {
+    if (selectedQuest && selectedQuest.photo) {
+      try {
+        // Upload image to IPFS
+        const uploadResponse = await fetch('/api/upload-to-ipfs', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            imageData: selectedQuest.photo,
+            questId: selectedQuest.id,
+            questTitle: selectedQuest.title,
+          }),
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error('Failed to upload to IPFS');
+        }
+
+        const uploadResult = await uploadResponse.json();
+        
+        if (uploadResult.success) {
+          // Update quest status to completed with IPFS hash
+          const updatedQuest = { 
+            ...selectedQuest, 
+            status: "completed" as const,
+            ipfsHash: uploadResult.ipfsHash,
+            ipfsUrl: uploadResult.ipfsUrl
+          };
+          setSelectedQuest(updatedQuest);
+          setShowLocationVerification(false);
+          setSelectedQuest(null);
+          
+          // Show success message
+          alert(`Quest completed! Image stored on IPFS:\nHash: ${uploadResult.ipfsHash}\nURL: ${uploadResult.ipfsUrl}`);
+        } else {
+          throw new Error('IPFS upload failed');
+        }
+      } catch (error) {
+        console.error('Error uploading to IPFS:', error);
+        alert('Quest completed but failed to store image on IPFS. Please try again.');
+        
+        // Still mark quest as completed even if IPFS fails
+        const updatedQuest = { ...selectedQuest, status: "completed" as const };
+        setSelectedQuest(updatedQuest);
+        setShowLocationVerification(false);
+        setSelectedQuest(null);
+      }
     }
   };
 
