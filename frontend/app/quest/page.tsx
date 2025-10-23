@@ -185,8 +185,16 @@ export function QuestPage() {
           setShowLocationVerification(false);
           setSelectedQuest(null);
           
-          // Show success message
-          alert(`Quest completed! Image stored on IPFS:\nHash: ${uploadResult.ipfsHash}\nURL: ${uploadResult.ipfsUrl}`);
+          // Show success message with datacoin info
+          let successMessage = `Quest completed! Image stored on IPFS:\nHash: ${uploadResult.ipfsHash}\nURL: ${uploadResult.ipfsUrl}`;
+          
+          if (uploadResult.datacoinMinted) {
+            successMessage += `\n\n🎉 1 Datacoin minted!\nTx Hash: ${uploadResult.mintTxHash}`;
+          } else {
+            successMessage += `\n\n⚠️ Datacoin minting failed (IPFS upload successful)`;
+          }
+          
+          alert(successMessage);
         } else {
           throw new Error('IPFS upload failed');
         }

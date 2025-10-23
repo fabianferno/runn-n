@@ -1,5 +1,57 @@
 import { NextRequest, NextResponse } from 'next/server';
 import lighthouse from '@lighthouse-web3/sdk';
+import { ethers } from 'ethers';
+const DatacoinABI = require('../../../lib/abi/DataCoin');
+
+
+// Hardcoded wallet address to receive datacoins
+const RECEIVER_ADDRESS = "0xB226144791E9F9e89Bd9C32C9AF53016c2c300E7";
+
+async function mintDatacoin() {
+  try {
+    // Get environment variables
+    const PRIVATE_KEY = process.env.PRIVATE_KEY;
+
+    const DATACOIN_ADDRESS = process.env.DATACOIN_ADDRESS || "0x0b63450b90e26875FB854823AE56092c6a9D3CBE";
+    
+    if (!PRIVATE_KEY) {
+      throw new Error('Private key not configured');
+    }
+
+    // Setup blockchain connection
+
+    const provider = new ethers.JsonRpcProvider("https://1rpc.io/sepolia");
+    const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
+    const datacoinContract = new ethers.Contract(
+      DATACOIN_ADDRESS,
+      DatacoinABI,
+      wallet
+    );
+
+    // Mint 1 datacoin to the receiver
+    const amount = 1; // 1 datacoin
+    console.log(`Minting ${amount} datacoins to ${RECEIVER_ADDRESS}`);
+    
+    const mintTx = await datacoinContract.mint(
+      RECEIVER_ADDRESS,
+      ethers.parseUnits(amount.toString(), 18)
+    );
+    
+    await mintTx.wait();
+    console.log("Datacoin minted successfully. Tx hash:", mintTx.hash);
+    
+    return {
+      success: true,
+      txHash: mintTx.hash,
+      amount: amount,
+      receiver: RECEIVER_ADDRESS
+    };
+    
+  } catch (error) {
+    console.error('Error minting datacoin:', error);
+    throw error;
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -40,6 +92,15 @@ export async function POST(request: NextRequest) {
       throw new Error('Failed to upload to IPFS');
     }
 
+    // Mint and send 1 datacoin to user
+    let mintResult = null;
+    try {
+      mintResult = await mintDatacoin();
+    } catch (mintError) {
+      console.error('Error minting datacoin:', mintError);
+      // Continue even if minting fails
+    }
+
     return NextResponse.json({
       success: true,
       questId,
@@ -47,6 +108,8 @@ export async function POST(request: NextRequest) {
       fileName: uploadResponse.data.Name,
       size: uploadResponse.data.Size,
       ipfsUrl: `https://gateway.lighthouse.storage/ipfs/${uploadResponse.data.Hash}`,
+      datacoinMinted: mintResult ? true : false,
+      mintTxHash: mintResult?.txHash || null,
       timestamp: new Date().toISOString()
     });
 
