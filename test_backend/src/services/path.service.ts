@@ -16,7 +16,7 @@ export class PathService {
       this.validatePath(input);
 
       // STEP 1: Convert coordinates to hexes
-      const hexPath = H3Service.pathToHexes(input.path, 8);
+      const hexPath = H3Service.pathToHexes(input.path, 11);
 
       // STEP 2: Remove consecutive duplicates
       const uniqueHexPath = H3Service.removeDuplicates(hexPath);
