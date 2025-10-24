@@ -20,12 +20,17 @@ export class RegionService {
     // Get regions in viewport
     const regionIds = H3Service.getViewportRegions(bounds, resolution, 4);
 
-    console.log(`Loading ${regionIds.length} regions from MongoDB`);
+    console.log(
+      `🔍 Loading ${regionIds.length} regions from MongoDB for viewport`
+    );
+    console.log(`Region IDs:`, regionIds);
 
     // Fetch regions from MongoDB
     const regionDocs = await RegionModel.find({
       _id: { $in: regionIds },
     });
+
+    console.log(`📦 Found ${regionDocs.length} regions in MongoDB`);
 
     const regions: {
       [regionId: string]: { [hexId: string]: { user: string; color: string } };
@@ -33,6 +38,7 @@ export class RegionService {
     let totalHexes = 0;
 
     regionDocs.forEach((region) => {
+      console.log(`Region ${region._id}: ${region.territories.size} hexes`);
       regions[region._id] = {};
       region.territories.forEach((territory, hexId) => {
         regions[region._id][hexId] = {
@@ -42,6 +48,8 @@ export class RegionService {
         totalHexes++;
       });
     });
+
+    console.log(`✅ Returning ${totalHexes} total hexes`);
 
     return {
       regions,

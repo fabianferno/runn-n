@@ -135,30 +135,50 @@ export class H3Service {
   /**
    * Get regions in viewport bounds
    */
+  /**
+   * Get regions in viewport bounds (simpler approach)
+   */
   static getViewportRegions(
     bounds: { west: number; south: number; east: number; north: number },
     gameResolution: number,
     regionResolution: number = 4
   ): string[] {
     try {
-      const bbox = [
-        [
-          [bounds.west, bounds.south],
-          [bounds.east, bounds.south],
-          [bounds.east, bounds.north],
-          [bounds.west, bounds.north],
-          [bounds.west, bounds.south],
-        ],
+      // Sample points across the viewport to find regions
+      const regions = new Set<string>();
+
+      // Sample 5x5 grid of points across viewport
+      const lngStep = (bounds.east - bounds.west) / 5;
+      const latStep = (bounds.north - bounds.south) / 5;
+
+      for (let lng = bounds.west; lng <= bounds.east; lng += lngStep) {
+        for (let lat = bounds.south; lat <= bounds.north; lat += latStep) {
+          try {
+            const hex = h3.latLngToCell(lat, lng, gameResolution);
+            const regionId = h3.cellToParent(hex, regionResolution);
+            regions.add(regionId);
+          } catch (error) {
+            // Skip invalid coordinates
+          }
+        }
+      }
+
+      // Also check the four corners specifically
+      const corners = [
+        [bounds.south, bounds.west],
+        [bounds.south, bounds.east],
+        [bounds.north, bounds.west],
+        [bounds.north, bounds.east],
       ];
 
-      // Get all game hexes in viewport
-      const viewportHexes = h3.polygonToCells(bbox, gameResolution, true);
-
-      // Convert to parent regions (deduplicate)
-      const regions = new Set<string>();
-      viewportHexes.forEach((hex) => {
-        const parentRegion = h3.cellToParent(hex, regionResolution);
-        regions.add(parentRegion);
+      corners.forEach(([lat, lng]) => {
+        try {
+          const hex = h3.latLngToCell(lat, lng, gameResolution);
+          const regionId = h3.cellToParent(hex, regionResolution);
+          regions.add(regionId);
+        } catch (error) {
+          // Skip invalid coordinates
+        }
       });
 
       return Array.from(regions);

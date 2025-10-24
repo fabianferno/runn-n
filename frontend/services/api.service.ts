@@ -12,20 +12,28 @@ export class ApiService {
   /**
    * Get territories in viewport
    */
+  /**
+   * Get territories in viewport
+   */
   static async getTerritoriesInViewport(
     bounds: { west: number; south: number; east: number; north: number },
     resolution: number = 11
   ) {
     const boundsStr = `${bounds.west},${bounds.south},${bounds.east},${bounds.north}`;
-    const response = await fetch(
-      `${API_BASE_URL}/territories/viewport?bounds=${boundsStr}&resolution=${resolution}`
-    );
+    const url = `${API_BASE_URL}/territories/viewport?bounds=${boundsStr}&resolution=${resolution}`;
+
+    console.log("🌐 Fetching from:", url);
+
+    const response = await fetch(url);
 
     if (!response.ok) {
       throw new Error("Failed to fetch territories");
     }
 
-    return response.json();
+    const data = await response.json();
+    console.log("📥 Raw API response:", data);
+
+    return data;
   }
 
   /**

@@ -672,25 +672,42 @@ export class TerritoryGame {
     this.territories.set(hexId, userId);
 
     const feature = this.hexToFeature(hexId, userId, color);
-    if (!feature) return;
+    if (!feature) {
+      console.warn("Could not create feature for hex:", hexId);
+      return;
+    }
 
     const source = this.map.getSource("territories") as mapboxgl.GeoJSONSource;
-    if (source) {
-      const existingData = (source as any)._data;
-      const features = existingData?.features || [];
+    if (!source) {
+      console.warn("Territories source not found");
+      return;
+    }
+
+    try {
+      // Get existing data
+      const existingData = (source as any)._data || {
+        type: "FeatureCollection",
+        features: [],
+      };
+      const features = existingData.features || [];
 
       // Remove existing feature with same hex ID
       const filteredFeatures = features.filter(
-        (f: any) => f.properties.hex !== hexId
+        (f: any) => f.properties?.hex !== hexId
       );
 
       // Add new feature
       filteredFeatures.push(feature);
 
+      // Update source
       source.setData({
         type: "FeatureCollection",
         features: filteredFeatures,
       });
+
+      console.log(`✅ Set territory ${hexId} for user ${userId}`);
+    } catch (error) {
+      console.error("Error setting territory:", error);
     }
   }
 

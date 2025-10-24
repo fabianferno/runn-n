@@ -75,20 +75,15 @@ export const MapComponent: React.FC<MapComponentProps> = ({
 
     mapRef.current = map;
 
-    map.on("load", () => {
+    map.on("load", async () => {
+      console.log("Map loaded, initializing game...");
+
       // Initialize territory game
       gameRef.current = new TerritoryGame(map, 11, 12);
-      map.addControl(new mapboxgl.NavigationControl(), "bottom-right");
-      const geolocateControl = new mapboxgl.GeolocateControl({
-        positionOptions: {
-          enableHighAccuracy: true,
-        },
-        trackUserLocation: true,
-        showUserHeading: true,
-        showUserLocation: true,
-      });
 
-      map.addControl(geolocateControl, "bottom-right");
+      // Wait a bit for TerritoryGame to initialize
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
       // Add path line source
       map.addSource("path-line", {
         type: "geojson",
@@ -108,10 +103,33 @@ export const MapComponent: React.FC<MapComponentProps> = ({
         source: "path-line",
         paint: {
           "line-color": userColor,
-          "line-width": 3,
+          "line-width": 4,
           "line-opacity": 0.8,
         },
       });
+
+      // Load existing territories from MongoDB
+      await loadTerritories();
+
+      // Add navigation controls
+      map.addControl(new mapboxgl.NavigationControl(), "bottom-right");
+
+      // Add geolocate control
+      const geolocateControl = new mapboxgl.GeolocateControl({
+        positionOptions: {
+          enableHighAccuracy: true,
+        },
+        trackUserLocation: true,
+        showUserHeading: true,
+        showUserLocation: true,
+      });
+
+      map.addControl(geolocateControl, "bottom-right");
+    });
+
+    // Reload territories when map moves
+    map.on("moveend", async () => {
+      await loadTerritories();
     });
 
     return () => {
@@ -122,6 +140,79 @@ export const MapComponent: React.FC<MapComponentProps> = ({
     };
   }, [userId, userColor]);
 
+  const loadTerritories = async () => {
+    if (!mapRef.current || !gameRef.current) {
+      console.warn("Map or game not ready");
+      return;
+    }
+
+    try {
+      const bounds = mapRef.current.getBounds();
+
+      if (!bounds) {
+        console.warn("Map bounds not available yet");
+        return;
+      }
+
+      console.log("🔍 Loading territories for bounds:", {
+        west: bounds.getWest(),
+        south: bounds.getSouth(),
+        east: bounds.getEast(),
+        north: bounds.getNorth(),
+      });
+
+      const viewportData = await ApiService.getTerritoriesInViewport(
+        {
+          west: bounds.getWest(),
+          south: bounds.getSouth(),
+          east: bounds.getEast(),
+          north: bounds.getNorth(),
+        },
+        11
+      );
+
+      console.log("📦 Received viewport data:", {
+        regionCount: Object.keys(viewportData.regions || {}).length,
+        totalHexes: viewportData.totalHexes,
+        regions: viewportData.regions,
+      });
+
+      if (
+        viewportData.regions &&
+        Object.keys(viewportData.regions).length > 0
+      ) {
+        let totalLoaded = 0;
+
+        Object.entries(viewportData.regions).forEach(([regionId, hexes]) => {
+          console.log(
+            `🔧 Processing region ${regionId} with ${
+              Object.keys(hexes as object).length
+            } hexes`
+          );
+
+          Object.entries(
+            hexes as Record<string, { user: string; color: string }>
+          ).forEach(([hexId, territory]) => {
+            console.log(
+              `  Adding hex ${hexId} for user ${territory.user} (${territory.color})`
+            );
+            gameRef.current?.setTerritory(
+              hexId,
+              territory.user,
+              territory.color
+            );
+            totalLoaded++;
+          });
+        });
+
+        console.log(`✅ Loaded ${totalLoaded} hexes from MongoDB to map`);
+      } else {
+        console.log("⚠️ No territories found in viewport");
+      }
+    } catch (error) {
+      console.error("❌ Error loading territories:", error);
+    }
+  };
   // Update user marker
   useEffect(() => {
     if (!mapRef.current || !currentLocation) return;
