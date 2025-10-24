@@ -8,6 +8,7 @@ import territoriesRoutes from "./routes/territories.routes";
 import usersRoutes from "./routes/users.routes";
 import { SocketHandler } from "./websocket/socket.handler";
 import { errorHandler } from "./middleware/error.middleware";
+import { connectDatabase } from "./config/database";
 
 // Load environment variables
 dotenv.config();
@@ -22,7 +23,12 @@ const io = new SocketIOServer(server, {
     methods: ["GET", "POST"],
   },
 });
+(async () => {
+  // Connect to MongoDB
+  await connectDatabase();
 
+  // ... rest of your server setup ...
+})();
 // Middleware
 app.use(cors());
 app.use(express.json());

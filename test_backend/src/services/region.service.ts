@@ -1,41 +1,46 @@
-import { Region, User } from "../types";
+import { Region } from "../types";
 import { H3Service } from "./h3.service";
-import { mockRegions, mockUsers } from "../data/mock-data";
+import { RegionModel } from "../models/region.model";
+import { mockUsers } from "../data/mock-data";
 
 export class RegionService {
   /**
    * Get territories in viewport
    */
-  static getTerritoriesInViewport(
+  static async getTerritoriesInViewport(
     bounds: { west: number; south: number; east: number; north: number },
-    resolution: number = 8
-  ): {
+    resolution: number = 11
+  ): Promise<{
     regions: {
       [regionId: string]: { [hexId: string]: { user: string; color: string } };
     };
     regionIds: string[];
     totalHexes: number;
-  } {
+  }> {
     // Get regions in viewport
     const regionIds = H3Service.getViewportRegions(bounds, resolution, 4);
+
+    console.log(`Loading ${regionIds.length} regions from MongoDB`);
+
+    // Fetch regions from MongoDB
+    const regionDocs = await RegionModel.find({
+      _id: { $in: regionIds },
+    });
 
     const regions: {
       [regionId: string]: { [hexId: string]: { user: string; color: string } };
     } = {};
     let totalHexes = 0;
 
-    regionIds.forEach((regionId) => {
-      const region = mockRegions.get(regionId);
-      if (region) {
-        regions[regionId] = {};
-        Object.entries(region.territories).forEach(([hexId, territory]) => {
-          regions[regionId][hexId] = {
-            user: territory.user,
-            color: territory.color,
-          };
-          totalHexes++;
-        });
-      }
+    regionDocs.forEach((region) => {
+      regions[region._id] = {};
+      region.territories.forEach((territory, hexId) => {
+        regions[region._id][hexId] = {
+          user: territory.user,
+          color: territory.color,
+        };
+        totalHexes++;
+      });
     });
 
     return {
@@ -48,74 +53,126 @@ export class RegionService {
   /**
    * Get single region
    */
-  static getRegion(regionId: string): Region | null {
-    return mockRegions.get(regionId) || null;
+  static async getRegion(regionId: string): Promise<Region | null> {
+    const region = await RegionModel.findById(regionId);
+
+    if (!region) {
+      return null;
+    }
+
+    // Convert Map to plain object
+    const territories: any = {};
+    region.territories.forEach((territory, hexId) => {
+      territories[hexId] = territory;
+    });
+
+    const playerCounts: any = {};
+    region.metadata.playerCounts.forEach((count, playerId) => {
+      playerCounts[playerId] = count;
+    });
+
+    return {
+      _id: region._id,
+      territories,
+      metadata: {
+        hexCount: region.metadata.hexCount,
+        lastUpdate: region.metadata.lastUpdate,
+        playerCounts,
+        contestedBy: region.metadata.contestedBy,
+      },
+    };
   }
 
   /**
    * Batch update territories
    */
-  static batchUpdate(updates: { [userId: string]: string[] }): {
+  static async batchUpdate(updates: { [userId: string]: string[] }): Promise<{
     success: boolean;
     updated: number;
     users: number;
     regionsAffected: string[];
     conflicts: { [hexId: string]: { previous: string; new: string } };
-  } {
+  }> {
     const conflicts: { [hexId: string]: { previous: string; new: string } } =
       {};
     const affectedRegions = new Set<string>();
     let totalUpdated = 0;
 
-    Object.entries(updates).forEach(([userId, hexIds]) => {
-      hexIds.forEach((hexId) => {
+    for (const [userId, hexIds] of Object.entries(updates)) {
+      const user = mockUsers.get(userId);
+      const color = user?.color || "#E8E8E8";
+
+      // Group hexes by region
+      const hexesByRegion = new Map<string, string[]>();
+
+      for (const hexId of hexIds) {
         try {
           const regionId = H3Service.getRegionForHex(hexId, 4);
-          affectedRegions.add(regionId);
-
-          let region = mockRegions.get(regionId);
-          if (!region) {
-            region = {
-              _id: regionId,
-              territories: {},
-              metadata: {
-                hexCount: 0,
-                lastUpdate: Date.now(),
-                playerCounts: {},
-                contestedBy: [],
-              },
-            };
-            mockRegions.set(regionId, region);
+          if (!hexesByRegion.has(regionId)) {
+            hexesByRegion.set(regionId, []);
           }
+          hexesByRegion.get(regionId)!.push(hexId);
+          affectedRegions.add(regionId);
+        } catch (error) {
+          console.error("Error grouping hex:", error);
+        }
+      }
 
+      // Update each region
+      for (const [regionId, regionHexes] of hexesByRegion.entries()) {
+        let region = await RegionModel.findById(regionId);
+
+        if (!region) {
+          region = new RegionModel({
+            _id: regionId,
+            territories: new Map(),
+            metadata: {
+              hexCount: 0,
+              lastUpdate: Date.now(),
+              playerCounts: new Map(),
+              contestedBy: [],
+            },
+          });
+        }
+
+        for (const hexId of regionHexes) {
           // Check for conflict
-          if (
-            region.territories[hexId] &&
-            region.territories[hexId].user !== userId
-          ) {
+          const existingTerritory = region.territories.get(hexId);
+          if (existingTerritory && existingTerritory.user !== userId) {
             conflicts[hexId] = {
-              previous: region.territories[hexId].user,
+              previous: existingTerritory.user,
               new: userId,
             };
           }
 
-          // Get user with proper typing
-          const user: User | undefined = mockUsers.get(userId);
-
           // Update territory
-          region.territories[hexId] = {
+          region.territories.set(hexId, {
             user: userId,
-            color: user?.color || "#E8E8E8",
+            color,
             capturedAt: Date.now(),
             method: "click",
-          };
+          });
 
           totalUpdated++;
-        } catch (error) {
-          console.error("Error updating hex:", error);
         }
-      });
-    });
+
+        // Update metadata
+        region.metadata.hexCount = region.territories.size;
+        region.metadata.lastUpdate = Date.now();
+
+        const currentCount = region.metadata.playerCounts.get(userId) || 0;
+        region.metadata.playerCounts.set(
+          userId,
+          currentCount + regionHexes.length
+        );
+
+        if (!region.metadata.contestedBy.includes(userId)) {
+          region.metadata.contestedBy.push(userId);
+        }
+
+        await region.save();
+      }
+    }
 
     return {
       success: true,

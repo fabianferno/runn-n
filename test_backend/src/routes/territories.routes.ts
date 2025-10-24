@@ -55,10 +55,14 @@ router.get("/viewport", (req: Request, res: Response) => {
  * GET /api/territories/region/:regionId
  * Get single region
  */
-router.get("/region/:regionId", (req: Request, res: Response) => {
+/**
+ * GET /api/territories/region/:regionId
+ * Get single region
+ */
+router.get("/region/:regionId", async (req: Request, res: Response) => {
   try {
     const { regionId } = req.params;
-    const region = RegionService.getRegion(regionId);
+    const region = await RegionService.getRegion(regionId); // Add await here
 
     if (!region) {
       return res.status(404).json({

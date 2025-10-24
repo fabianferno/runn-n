@@ -9,6 +9,7 @@ import { usePathTracking } from "@/hooks/usePathTracking";
 import { ApiService } from "@/services/api.service";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || "";
+// Add at the top of MapComponent after imports
 
 interface MapComponentProps {
   userId: string;
@@ -19,6 +20,9 @@ export const MapComponent: React.FC<MapComponentProps> = ({
   userId,
   userColor,
 }) => {
+  useEffect(() => {
+    console.log("API Base URL:", process.env.NEXT_PUBLIC_API_URL);
+  }, []);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const gameRef = useRef<TerritoryGame | null>(null);
@@ -104,8 +108,8 @@ export const MapComponent: React.FC<MapComponentProps> = ({
         source: "path-line",
         paint: {
           "line-color": userColor,
-          "line-width": 2,
-          "line-opacity": 0.3,
+          "line-width": 3,
+          "line-opacity": 0.8,
         },
       });
     });
@@ -181,20 +185,28 @@ export const MapComponent: React.FC<MapComponentProps> = ({
   };
 
   // Stop tracking and send to backend
+  // Stop tracking and send to backend
   const handleStopTracking = async () => {
     const result = await stopRecording();
     stopTracking();
 
     if (result.matchedPath.length < 2) {
       alert("Path too short to capture territories");
+      clearPath();
       return;
     }
 
     try {
-      // Convert matched path to lat/lng format for backend
+      // matchedPath is already [lng, lat], backend expects [lat, lng]
       const pathCoordinates: [number, number][] = result.matchedPath.map(
         (coord) => [coord[1], coord[0]] // Convert [lng, lat] to [lat, lng]
       );
+
+      console.log("Sending to backend:", {
+        pathLength: pathCoordinates.length,
+        firstPoint: pathCoordinates[0],
+        lastPoint: pathCoordinates[pathCoordinates.length - 1],
+      });
 
       // Send to backend
       const response = await ApiService.capturePath({
@@ -214,9 +226,18 @@ export const MapComponent: React.FC<MapComponentProps> = ({
 
       // Clear path
       clearPath();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error capturing path:", error);
-      alert("Failed to capture path. Please try again.");
+
+      // Log detailed error info
+      console.error("Error details:", {
+        message: error.message,
+        response: error.response,
+      });
+
+      alert(`Failed to capture path: ${error.message || "Please try again."}`);
+
+      // Don't clear path on error so user can retry
     }
   };
 
@@ -357,7 +378,29 @@ export const MapComponent: React.FC<MapComponentProps> = ({
           >
             🪙 Submit Data Coin
           </button>
-
+          <button
+            onClick={async () => {
+              try {
+                const response = await fetch(`https://remo.crevn.xyz/health`);
+                const data = await response.json();
+                alert("Backend is accessible! " + JSON.stringify(data));
+              } catch (error: any) {
+                alert("Cannot reach backend: " + error.message);
+              }
+            }}
+            style={{
+              padding: "10px",
+              background: "orange",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              cursor: "pointer",
+              marginTop: "10px",
+              width: "100%",
+            }}
+          >
+            🔧 Test Backend Connection
+          </button>
           {/* Live Stats */}
           <div
             style={{
