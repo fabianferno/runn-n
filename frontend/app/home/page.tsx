@@ -6,8 +6,9 @@ import { StatCard } from "@/components/stat-card";
 import { FloatingActionButton } from "@/components/floating-action-button";
 import { BottomNav } from "@/components/bottom-nav";
 import { MapComponent } from "@/components/map-component";
+import ConnectButton from "@/components/connectButton";
 
-export function HomePage() {
+function HomePage() {
   const [isCapturing, setIsCapturing] = useState(false);
 
   const handleStartCapture = () => {
@@ -26,6 +27,7 @@ export function HomePage() {
             </p>
           </div>
           <div className="w-10 h-10 rounded-full bg-primary animate-subtle-bounce" />
+          <ConnectButton />
         </div>
         <div className="px-4 py-6 animate-scale-in">
           <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-white/20">
@@ -44,6 +46,8 @@ export function HomePage() {
               useCurrentLocation={true}
               hideBuildingLabels={false}
               hidePoiLabels={false}
+              showGridOverlay={true}
+              gridSize={20}
               onMapLoad={(map) => {
                 console.log("Map loaded:", map);
               }}
@@ -197,6 +201,7 @@ export function HomePage() {
       <BottomNav
         items={[
           { href: "/", label: "Map", icon: "M" },
+          { href: "/territory", label: "Territory", icon: "T" },
           { href: "/clans", label: "Clans", icon: "C" },
           { href: "/profile", label: "Profile", icon: "P" },
         ]}

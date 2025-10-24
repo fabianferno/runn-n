@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
+import { TerritoryGame } from "@/lib/territory-game";
 
 // Set your Mapbox access token
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || "";
@@ -23,6 +24,8 @@ interface MapComponentProps {
   hideLabels?: boolean;
   hideBuildingLabels?: boolean;
   hidePoiLabels?: boolean;
+  showGridOverlay?: boolean;
+  gridSize?: number; // in meters
   onMapLoad?: (map: mapboxgl.Map) => void;
   onMapMove?: (lng: number, lat: number, zoom: number) => void;
   onLocationFound?: (lng: number, lat: number) => void;
@@ -31,7 +34,7 @@ interface MapComponentProps {
 export const MapComponent: React.FC<MapComponentProps> = ({
   className = "",
   initialCenter = [-74.5, 40],
-  initialZoom = 9,
+  initialZoom = 17,
   mapStyle = "mapbox://styles/mapbox/dark-v11",
   showControls = true,
   showNavigationControl = true,
@@ -44,6 +47,8 @@ export const MapComponent: React.FC<MapComponentProps> = ({
   hideLabels = false,
   hideBuildingLabels = false,
   hidePoiLabels = false,
+  showGridOverlay = true,
+  gridSize = 20, // 20 meters
   onMapLoad,
   onMapMove,
   onLocationFound,
@@ -55,6 +60,9 @@ export const MapComponent: React.FC<MapComponentProps> = ({
   const [zoom, setZoom] = useState(initialZoom);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+
+  // Territory game instance
+  const [territoryGame, setTerritoryGame] = useState<any>(null);
 
   // Memoize callbacks to prevent unnecessary re-renders
   const handleMapLoad = useCallback(
@@ -284,6 +292,12 @@ export const MapComponent: React.FC<MapComponentProps> = ({
         // Hide labels after map loads
         hideMapLabels(map.current);
 
+        // Initialize territory game
+        if (showGridOverlay) {
+          const game = new TerritoryGame(map.current);
+          setTerritoryGame(game);
+        }
+
         // Also try hiding labels after a short delay in case style isn't fully loaded
         setTimeout(() => {
           if (map.current) {
@@ -306,6 +320,11 @@ export const MapComponent: React.FC<MapComponentProps> = ({
 
           // Call onMapMove callback
           handleMapMove(newLng, newLat, newZoom);
+
+          // Expand territory grid when map moves
+          if (territoryGame) {
+            territoryGame.expandGrid();
+          }
         }
       });
 
@@ -316,10 +335,16 @@ export const MapComponent: React.FC<MapComponentProps> = ({
           hideMapLabels(map.current);
         }
       });
+
+      // Grid is now fixed and doesn't need to be regenerated on map moves
+      // This prevents performance issues and crashes
     }
 
     // Cleanup function
     return () => {
+      if (territoryGame) {
+        territoryGame.destroy();
+      }
       if (map.current) {
         map.current.remove();
       }

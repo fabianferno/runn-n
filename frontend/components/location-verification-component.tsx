@@ -4,6 +4,7 @@ import { useState } from "react";
 import { GlassCard } from "@/components/glass-card";
 import QRCode from "react-qr-code";
 import { ReclaimProofRequest } from '@reclaimprotocol/js-sdk';
+import { useUploadToIPFS } from "@/lib/ipfs-utils";
 
 interface Quest {
   id: string;
@@ -32,6 +33,10 @@ export function LocationVerificationComponent({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [verificationStarted, setVerificationStarted] = useState(false);
+  const [isUploadingToIPFS, setIsUploadingToIPFS] = useState(false);
+
+  // IPFS upload hook
+  const { uploadToIPFS, error: ipfsError } = useUploadToIPFS();
 
   const getVerificationReq = async () => {
     setIsLoading(true);
@@ -44,6 +49,10 @@ export function LocationVerificationComponent({
       const APP_SECRET = process.env.NEXT_PUBLIC_RECLAIM_APP_SECRET || '';
       const PROVIDER_ID = process.env.NEXT_PUBLIC_RECLAIM_PROVIDER_ID || '';
 
+      if (!APP_ID || !APP_SECRET || !PROVIDER_ID) {
+        throw new Error('Reclaim credentials not configured');
+      }
+
       // Initialize the Reclaim SDK with your credentials
       const reclaimProofRequest = await ReclaimProofRequest.init(APP_ID, APP_SECRET, PROVIDER_ID);
 
@@ -55,10 +64,36 @@ export function LocationVerificationComponent({
       // Start listening for proof submissions
       await reclaimProofRequest.startSession({
         // Called when the user successfully completes the verification
-        onSuccess: (proofs) => {
+        onSuccess: async (proofs: any) => {
           console.log('Location verification successful:', proofs);
           setProofs(proofs);
-          onVerified(proofs);
+          
+          // Upload to IPFS if quest has photo
+          if (quest.photo) {
+            setIsUploadingToIPFS(true);
+            try {
+              const ipfsResult = await uploadToIPFS(quest.photo);
+              console.log('Image uploaded to IPFS:', ipfsResult);
+              
+              // Call onVerified with IPFS data
+              onVerified({
+                ...proofs,
+                ipfsHash: ipfsResult.ipfsHash,
+                ipfsUrl: ipfsResult.ipfsUrl,
+                fileName: ipfsResult.fileName,
+                size: ipfsResult.size
+              });
+            } catch (uploadError) {
+              console.error('IPFS upload failed:', uploadError);
+              // Still call onVerified even if IPFS fails
+              onVerified(proofs);
+            } finally {
+              setIsUploadingToIPFS(false);
+            }
+          } else {
+            // No photo to upload, just verify
+            onVerified(proofs);
+          }
         },
         // Called if there's an error during verification
         onError: (error) => {
@@ -81,6 +116,43 @@ export function LocationVerificationComponent({
     }
   };
 
+  const completeVerification = async () => {
+    // For testing purposes - simulate successful verification
+    const mockProofs = {
+      questId: quest.id,
+      location: quest.location,
+      timestamp: new Date().toISOString(),
+      verified: true
+    };
+    
+    // Upload to IPFS if quest has photo
+    if (quest.photo) {
+      setIsUploadingToIPFS(true);
+      try {
+        const ipfsResult = await uploadToIPFS(quest.photo);
+        console.log('Image uploaded to IPFS:', ipfsResult);
+        
+        // Call onVerified with IPFS data
+        onVerified({
+          ...mockProofs,
+          ipfsHash: ipfsResult.ipfsHash,
+          ipfsUrl: ipfsResult.ipfsUrl,
+          fileName: ipfsResult.fileName,
+          size: ipfsResult.size
+        });
+      } catch (uploadError) {
+        console.error('IPFS upload failed:', uploadError);
+        // Still call onVerified even if IPFS fails
+        onVerified(mockProofs);
+      } finally {
+        setIsUploadingToIPFS(false);
+      }
+    } else {
+      // No photo to upload, just verify
+      onVerified(mockProofs);
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
       <GlassCard className="w-full max-w-md p-6">
@@ -96,6 +168,21 @@ export function LocationVerificationComponent({
         {error && (
           <div className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg">
             <p className="text-red-300 text-sm">{error}</p>
+          </div>
+        )}
+
+        {ipfsError && (
+          <div className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg">
+            <p className="text-red-300 text-sm">IPFS Upload Error: {ipfsError}</p>
+          </div>
+        )}
+
+        {isUploadingToIPFS && (
+          <div className="mb-4 p-3 bg-blue-500/20 border border-blue-500/30 rounded-lg">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 border-2 border-blue-300 border-t-transparent rounded-full animate-spin"></div>
+              <p className="text-blue-300 text-sm">Uploading image to IPFS...</p>
+            </div>
           </div>
         )}
 
@@ -177,13 +264,21 @@ export function LocationVerificationComponent({
               </p>
             </div>
 
-            {/* Cancel Button */}
-            <button
-              onClick={onClose}
-              className="w-full px-4 py-2 bg-gray-500/20 text-gray-300 rounded-lg hover:bg-gray-500/30 transition-colors"
-            >
-              Cancel Verification
-            </button>
+            {/* Action Buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={completeVerification}
+                className="flex-1 px-4 py-2 bg-green-500/80 text-white rounded-lg hover:bg-green-500 transition-colors"
+              >
+                Complete Quest (Test)
+              </button>
+              <button
+                onClick={onClose}
+                className="flex-1 px-4 py-2 bg-gray-500/20 text-gray-300 rounded-lg hover:bg-gray-500/30 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         )}
 
