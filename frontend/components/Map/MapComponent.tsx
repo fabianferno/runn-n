@@ -197,9 +197,8 @@ export const MapComponent: React.FC<MapComponentProps> = ({
     }
 
     try {
-      // matchedPath is already [lng, lat], backend expects [lat, lng]
       const pathCoordinates: [number, number][] = result.matchedPath.map(
-        (coord) => [coord[1], coord[0]] // Convert [lng, lat] to [lat, lng]
+        (coord) => [coord[1], coord[0]]
       );
 
       console.log("Sending to backend:", {
@@ -208,7 +207,6 @@ export const MapComponent: React.FC<MapComponentProps> = ({
         lastPoint: pathCoordinates[pathCoordinates.length - 1],
       });
 
-      // Send to backend
       const response = await ApiService.capturePath({
         user: userId,
         color: userColor,
@@ -216,6 +214,14 @@ export const MapComponent: React.FC<MapComponentProps> = ({
       });
 
       console.log("Capture response:", response);
+
+      // Add captured hexes to map immediately
+      if (gameRef.current && response.hexPath) {
+        response.hexPath.forEach((hexId) => {
+          gameRef.current?.setTerritory(hexId, userId, userColor);
+        });
+      }
+
       setCapturedHexes((prev) => prev + response.hexesCaptured);
 
       alert(
@@ -224,20 +230,14 @@ export const MapComponent: React.FC<MapComponentProps> = ({
           `Distance: ${(distance / 1000).toFixed(2)} km`
       );
 
-      // Clear path
       clearPath();
     } catch (error: any) {
       console.error("Error capturing path:", error);
-
-      // Log detailed error info
       console.error("Error details:", {
         message: error.message,
         response: error.response,
       });
-
       alert(`Failed to capture path: ${error.message || "Please try again."}`);
-
-      // Don't clear path on error so user can retry
     }
   };
 

@@ -294,7 +294,15 @@ export const MapComponent: React.FC<MapComponentProps> = ({
 
         // Initialize territory game
         if (showGridOverlay) {
-          const game = new TerritoryGame(map.current);
+          const game = new TerritoryGame(map.current, 11, 12, (gridData) => {
+            // Handle grid click in your React component
+            console.log("Grid clicked:", gridData);
+
+            // You can update React state here
+
+            // Or make API calls
+            // fetchGridDetails(gridData.id);
+          });
           setTerritoryGame(game);
         }
 
