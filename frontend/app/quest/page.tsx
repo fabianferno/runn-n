@@ -6,7 +6,6 @@ import { BottomNav } from "@/components/bottom-nav";
 import { FloatingActionButton } from "@/components/floating-action-button";
 import { CameraComponent } from "@/components/camera-component";
 import { LocationVerificationComponent } from "@/components/location-verification-component";
-import { uploadToIPFSAndMint } from "@/lib/ipfs-utils";
 
 
 
@@ -35,6 +34,7 @@ export function QuestPage() {
   const [showLocationVerification, setShowLocationVerification] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
+
 
 
   const quests: Quest[] = [
@@ -153,50 +153,26 @@ export function QuestPage() {
   };
 
   const handleLocationVerified = async (proofs: any) => {
-    if (selectedQuest && selectedQuest.photo) {
-      try {
-        // Upload image to IPFS and mint datacoin
-        const uploadResult = await uploadToIPFSAndMint(
-          selectedQuest.photo,
-          selectedQuest.id,
-          selectedQuest.title
-        );
-        
-        if (uploadResult.success) {
-          // Update quest status to completed with IPFS hash
-          const updatedQuest = { 
-            ...selectedQuest, 
-            status: "completed" as const,
-            ipfsHash: uploadResult.ipfsHash,
-            ipfsUrl: uploadResult.ipfsUrl
-          };
-          setSelectedQuest(updatedQuest);
-          setShowLocationVerification(false);
-          setSelectedQuest(null);
-          
-          // Show success message with datacoin info
-          let successMessage = `Quest completed! Image stored on IPFS:\nHash: ${uploadResult.ipfsHash}\nURL: ${uploadResult.ipfsUrl}`;
-          
-          if (uploadResult.datacoinMinted) {
-            successMessage += `\n\n🎉 1 Datacoin minted!\nTx Hash: ${uploadResult.mintTxHash}`;
-          } else {
-            successMessage += `\n\n⚠️ Datacoin minting failed (IPFS upload successful)`;
-          }
-          
-          alert(successMessage);
-        } else {
-          throw new Error('IPFS upload failed');
-        }
-      } catch (error) {
-        console.error('Error uploading to IPFS:', error);
-        alert('Quest completed but failed to store image on IPFS. Please try again.');
-        
-        // Still mark quest as completed even if IPFS fails
-        const updatedQuest = { ...selectedQuest, status: "completed" as const };
-        setSelectedQuest(updatedQuest);
-        setShowLocationVerification(false);
-        setSelectedQuest(null);
+    if (selectedQuest) {
+      // Update quest status to completed with IPFS data (if available)
+      const updatedQuest = { 
+        ...selectedQuest, 
+        status: "completed" as const,
+        ipfsHash: proofs.ipfsHash,
+        ipfsUrl: proofs.ipfsUrl
+      };
+      setSelectedQuest(updatedQuest);
+      setShowLocationVerification(false);
+      setSelectedQuest(null);
+      
+      // Show success message
+      let successMessage = `Quest completed!`;
+      
+      if (proofs.ipfsHash) {
+        successMessage += `\n\nImage stored on IPFS:\nHash: ${proofs.ipfsHash}\nURL: ${proofs.ipfsUrl}`;
       }
+      
+      alert(successMessage);
     }
   };
 
