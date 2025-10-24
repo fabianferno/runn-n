@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { GlassCard } from "@/components/glass-card";
 import { BottomNav } from "@/components/bottom-nav";
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, useChainId } from "wagmi";
-import { keccak256, toBytes } from "viem";
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useChainId, usePublicClient } from "wagmi";
+import { keccak256, toBytes, decodeEventLog } from "viem";
 
 // @ts-expect-error - ABI files are CommonJS modules
 import DataCoinFactoryABI from "@/lib/abi/DataCoinFactory";
@@ -19,11 +19,9 @@ interface QuestFormData {
   // Quest information
   questName: string;
   questDescription: string;
-  questImage: string;
-  questLocation: string;
-  questReward: string;
+  difficulty: string;
   
-  // DataCoin information
+  // DataCoin information (set as defaults)
   coinName: string;
   coinSymbol: string;
   coinDescription: string;
@@ -47,13 +45,11 @@ interface QuestFormData {
 const DEFAULT_FORM_DATA: QuestFormData = {
   questName: "",
   questDescription: "",
-  questImage: "",
-  questLocation: "",
-  questReward: "",
-  coinName: "",
-  coinSymbol: "",
-  coinDescription: "",
-  tokenURI: "",
+  difficulty: "medium",
+  coinName: "QuestCoin",
+  coinSymbol: "QC",
+  coinDescription: "Quest completion reward token",
+  tokenURI: "https://ipfs.io/ipfs/QmQuestMetadata",
   creatorAllocationBps: 2000, // 20%
   contributorsAllocationBps: 5000, // 50%
   liquidityAllocationBps: 3000, // 30%
@@ -91,6 +87,7 @@ const CHAIN_CONFIGS = {
 export default function CreateQuestPage() {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
+  const publicClient = usePublicClient();
   const [formData, setFormData] = useState<QuestFormData>(DEFAULT_FORM_DATA);
   const [isCreating, setIsCreating] = useState(false);
   const [creationStep, setCreationStep] = useState<string>("");
@@ -100,6 +97,8 @@ export default function CreateQuestPage() {
   const [creationHash, setCreationHash] = useState<string | null>(null);
   const [waitingForApproval, setWaitingForApproval] = useState(false);
   const [dataCoinAddress, setDataCoinAddress] = useState<string | null>(null);
+  const [poolAddress, setPoolAddress] = useState<string | null>(null);
+  const [mintAccessGranted, setMintAccessGranted] = useState(false);
   const isCreatingDataCoinRef = useRef(false);
   const isApprovingRef = useRef(false);
 
@@ -121,12 +120,7 @@ export default function CreateQuestPage() {
   const validateForm = (): string | null => {
     if (!formData.questName.trim()) return "Quest name is required";
     if (!formData.questDescription.trim()) return "Quest description is required";
-    if (!formData.coinName.trim()) return "Coin name is required";
-    if (!formData.coinSymbol.trim()) return "Coin symbol is required";
-    if (!formData.tokenURI.trim()) return "Token URI is required";
-    
-    const totalAllocation = formData.creatorAllocationBps + formData.contributorsAllocationBps + formData.liquidityAllocationBps;
-    if (totalAllocation !== 10000) return "Allocations must total 100% (10000 basis points)";
+    if (!formData.difficulty) return "Difficulty is required";
     
     if (formData.lockAmount <= 0) return "Lock amount must be greater than 0";
     
@@ -284,6 +278,7 @@ export default function CreateQuestPage() {
       console.log("DataCoin creation transaction submitted:", result);
       setCreationHash("pending");
       setCreationStep("Step 2: DataCoin creation submitted! Waiting for confirmation...");
+
       
     } catch (err) {
       console.error("Error creating DataCoin:", err);
@@ -293,6 +288,55 @@ export default function CreateQuestPage() {
       isCreatingDataCoinRef.current = false;
     }
   }, [isConnected, address, writeContract, chainId, writeError, formData]);
+
+  // Parse transaction receipt to extract DataCoin address
+  const parseDataCoinCreationReceipt = useCallback(async (txHash: string) => {
+    if (!publicClient) {
+      throw new Error("Public client not available");
+    }
+
+    try {
+      const receipt = await publicClient.getTransactionReceipt({
+        hash: txHash as `0x${string}`,
+      });
+
+      console.log("Transaction receipt:", receipt);
+
+      // Look for DataCoinCreated event
+      for (const log of receipt.logs) {
+        try {
+          const decoded = decodeEventLog({
+            abi: DataCoinFactoryABI,
+            data: log.data,
+            topics: log.topics,
+          });
+
+          if (decoded.eventName === "DataCoinCreated") {
+            const eventData = decoded.args as any;
+            console.log("DataCoinCreated event found:", eventData);
+            
+            return {
+              coinAddress: eventData.coinAddress,
+              poolAddress: eventData.poolAddress,
+              name: eventData.name,
+              symbol: eventData.symbol,
+              tokenURI: eventData.tokenURI,
+              lockToken: eventData.lockToken,
+              tokensLocked: eventData.tokensLocked,
+            };
+          }
+        } catch (decodeError) {
+          // Skip logs that don't match our ABI
+          continue;
+        }
+      }
+
+      throw new Error("DataCoinCreated event not found in transaction receipt");
+    } catch (err) {
+      console.error("Error parsing transaction receipt:", err);
+      throw err;
+    }
+  }, [publicClient]);
 
   // Grant mint access to specified address
   const grantMintAccess = useCallback(async (dataCoinAddress: string) => {
@@ -314,6 +358,7 @@ export default function CreateQuestPage() {
       
       console.log("Mint access granted successfully");
       setCreationStep("Step 3: Mint access granted! Quest creation complete.");
+      setMintAccessGranted(true);
       
     } catch (err) {
       console.error("Error granting mint access:", err);
@@ -344,6 +389,41 @@ export default function CreateQuestPage() {
     console.log("Quest saved to storage:", questData);
     return questData;
   }, [formData, address]);
+
+  // Handle DataCoin creation completion
+  const handleDataCoinCreation = useCallback(async (txHash: string) => {
+    try {
+      // Parse the transaction receipt to get actual DataCoin address
+      const eventData = await parseDataCoinCreationReceipt(txHash);
+      console.log("Parsed DataCoin creation data:", eventData);
+      
+      // Set the actual addresses
+      setDataCoinAddress(eventData.coinAddress);
+      setPoolAddress(eventData.poolAddress);
+      
+      setCreationStep("Step 2: DataCoin created! Granting mint access...");
+      
+      // Grant mint access to the mint role address
+      await grantMintAccess(eventData.coinAddress);
+      
+      // Save quest to localStorage with actual data
+      const questData = saveQuestToStorage(eventData.coinAddress);
+      
+      setSuccess(`🎉 Quest "${formData.questName}" created successfully! 
+        DataCoin: ${eventData.coinAddress}
+        Pool: ${eventData.poolAddress}
+        Transaction: ${txHash}`);
+      setCreationStep("");
+      setIsCreating(false);
+      isCreatingDataCoinRef.current = false;
+      
+    } catch (parseError) {
+      console.error("Error parsing DataCoin creation:", parseError);
+      setError(`Failed to parse DataCoin creation: ${parseError instanceof Error ? parseError.message : "Unknown error"}`);
+      setIsCreating(false);
+      isCreatingDataCoinRef.current = false;
+    }
+  }, [parseDataCoinCreationReceipt, grantMintAccess, saveQuestToStorage, formData.questName]);
 
   // Handle transaction confirmation
   useEffect(() => {
@@ -377,23 +457,14 @@ export default function CreateQuestPage() {
         }, 100);
       } else if (hash === creationHash) {
         console.log("DataCoin creation confirmed");
-        // DataCoin creation confirmed - now grant mint access
-        setCreationStep("Step 2: DataCoin created! Granting mint access...");
+        // DataCoin creation confirmed - parse receipt and grant mint access
+        setCreationStep("Step 2: DataCoin created! Parsing transaction data...");
         
-        // Get the actual DataCoin address from the transaction receipt
-        // The DataCoin address should be emitted in the transaction logs
-        // For now, we'll need to implement proper event parsing
-        // This is a placeholder - in production you'd parse the transaction receipt for the DataCoinCreated event
-        
-        // TODO: Parse transaction receipt to get actual DataCoin address
-        // For now, we'll show success without the mint access step
-        setSuccess(`🎉 Quest "${formData.questName}" created successfully! Transaction: ${hash}`);
-        setCreationStep("");
-        setIsCreating(false);
-        isCreatingDataCoinRef.current = false;
+        // Handle the DataCoin creation completion
+        handleDataCoinCreation(hash);
       }
     }
-  }, [hash, isConfirmed, approvalHash, creationHash, waitingForApproval, createDataCoin]);
+  }, [hash, isConfirmed, approvalHash, creationHash, waitingForApproval, createDataCoin, handleDataCoinCreation]);
 
   // Fallback: If approval is confirmed but DataCoin creation hasn't started, trigger it
   useEffect(() => {
@@ -422,7 +493,7 @@ export default function CreateQuestPage() {
           <div>
             <h1 className="text-3xl font-bold text-foreground">Create Quest</h1>
             <p className="text-sm text-muted-foreground">
-              Design your quest • Deploy DataCoin • Grant mint access
+              Create quest • Set difficulty • Lock collateral
             </p>
           </div>
           <div className="w-10 h-10 rounded-full bg-primary animate-subtle-bounce" />
@@ -463,123 +534,53 @@ export default function CreateQuestPage() {
               <textarea
                 value={formData.questDescription}
                 onChange={(e) => handleInputChange("questDescription", e.target.value)}
-                className="w-full px-3 py-2 bg-background/50 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary h-20 resize-none"
-                placeholder="Describe your quest"
+                className="w-full px-3 py-2 bg-background/50 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary h-24 resize-none"
+                placeholder="Describe your quest (this will be used for AI analysis)"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1">Quest Location</label>
-              <input
-                type="text"
-                value={formData.questLocation}
-                onChange={(e) => handleInputChange("questLocation", e.target.value)}
-                className="w-full px-3 py-2 bg-background/50 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                placeholder="Enter quest location"
-              />
+              <label className="block text-sm font-medium text-foreground mb-1">Difficulty</label>
+              <select
+                value={formData.difficulty}
+                onChange={(e) => handleInputChange("difficulty", e.target.value)}
+                className="w-full px-3 py-2 bg-background/50 border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
+                <option value="expert">Expert</option>
+              </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1">Quest Reward</label>
+              <label className="block text-sm font-medium text-foreground mb-1">Lock Amount (USDC)</label>
               <input
-                type="text"
-                value={formData.questReward}
-                onChange={(e) => handleInputChange("questReward", e.target.value)}
+                type="number"
+                value={formData.lockAmount}
+                onChange={(e) => handleInputChange("lockAmount", Number(e.target.value))}
                 className="w-full px-3 py-2 bg-background/50 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                placeholder="Describe the reward"
+                placeholder="5"
+                min="1"
+                step="0.1"
               />
+              <p className="text-xs text-muted-foreground mt-1">
+                Minimum: 0.5 USDC • This amount will be locked as collateral
+              </p>
             </div>
           </div>
         </GlassCard>
 
-        {/* DataCoin Configuration */}
+        {/* DataCoin Configuration - Hidden (using defaults) */}
         <GlassCard className="p-4 mb-6">
           <h3 className="font-semibold text-foreground mb-3">DataCoin Configuration</h3>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Coin Name</label>
-                <input
-                  type="text"
-                  value={formData.coinName}
-                  onChange={(e) => handleInputChange("coinName", e.target.value)}
-                  className="w-full px-3 py-2 bg-background/50 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="e.g., Wind Coin"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Coin Symbol</label>
-                <input
-                  type="text"
-                  value={formData.coinSymbol}
-                  onChange={(e) => handleInputChange("coinSymbol", e.target.value)}
-                  className="w-full px-3 py-2 bg-background/50 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="e.g., WDC"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1">Token URI</label>
-              <input
-                type="text"
-                value={formData.tokenURI}
-                onChange={(e) => handleInputChange("tokenURI", e.target.value)}
-                className="w-full px-3 py-2 bg-background/50 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                placeholder="IPFS URI or metadata URL"
-              />
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Creator %</label>
-                <input
-                  type="number"
-                  value={formData.creatorAllocationBps / 100}
-                  onChange={(e) => handleInputChange("creatorAllocationBps", Number(e.target.value) * 100)}
-                  className="w-full px-3 py-2 bg-background/50 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="20"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Contributors %</label>
-                <input
-                  type="number"
-                  value={formData.contributorsAllocationBps / 100}
-                  onChange={(e) => handleInputChange("contributorsAllocationBps", Number(e.target.value) * 100)}
-                  className="w-full px-3 py-2 bg-background/50 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="50"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Liquidity %</label>
-                <input
-                  type="number"
-                  value={formData.liquidityAllocationBps / 100}
-                  onChange={(e) => handleInputChange("liquidityAllocationBps", Number(e.target.value) * 100)}
-                  className="w-full px-3 py-2 bg-background/50 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="30"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Vesting Days</label>
-                <input
-                  type="number"
-                  value={formData.creatorVestingDays}
-                  onChange={(e) => handleInputChange("creatorVestingDays", Number(e.target.value))}
-                  className="w-full px-3 py-2 bg-background/50 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="365"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Lock Amount</label>
-                <input
-                  type="number"
-                  value={formData.lockAmount}
-                  onChange={(e) => handleInputChange("lockAmount", Number(e.target.value))}
-                  className="w-full px-3 py-2 bg-background/50 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="5"
-                />
-              </div>
-            </div>
+          <div className="space-y-2 text-sm text-muted-foreground">
+            <p>• Coin Name: QuestCoin (QC)</p>
+            <p>• Creator Allocation: 20%</p>
+            <p>• Contributors Allocation: 50%</p>
+            <p>• Liquidity Allocation: 30%</p>
+            <p>• Vesting Period: 365 days</p>
+            <p className="text-xs mt-2 text-muted-foreground/70">
+              These settings are optimized for quest rewards and can be customized in advanced mode.
+            </p>
           </div>
         </GlassCard>
 
@@ -650,10 +651,46 @@ export default function CreateQuestPage() {
             <div className="text-center">
               <div className="text-4xl mb-2">🎉</div>
               <h3 className="text-xl font-bold text-green-400 mb-2">
-                DataCoin Created!
+                Quest Created Successfully!
               </h3>
-              <p className="text-sm text-muted-foreground break-all">
-                {success}
+              <p className="text-sm text-muted-foreground mb-4">
+                Your quest "{formData.questName}" has been created with a DataCoin reward system.
+              </p>
+              
+              {/* DataCoin Information */}
+              {dataCoinAddress && (
+                <div className="space-y-2 text-left bg-green-500/10 p-3 rounded-lg">
+                  <div>
+                    <span className="text-xs text-muted-foreground">DataCoin Address:</span>
+                    <p className="text-sm font-mono break-all text-green-300">
+                      {dataCoinAddress}
+                    </p>
+                  </div>
+                  {poolAddress && (
+                    <div>
+                      <span className="text-xs text-muted-foreground">Pool Address:</span>
+                      <p className="text-sm font-mono break-all text-green-300">
+                        {poolAddress}
+                      </p>
+                    </div>
+                  )}
+                  <div>
+                    <span className="text-xs text-muted-foreground">Coin Details:</span>
+                    <p className="text-sm text-green-300">
+                      {formData.coinName} ({formData.coinSymbol})
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-xs text-muted-foreground">Mint Access:</span>
+                    <p className="text-sm text-green-300">
+                      {mintAccessGranted ? "✅ Granted" : "⏳ Pending"}
+                    </p>
+                  </div>
+                </div>
+              )}
+              
+              <p className="text-xs text-muted-foreground mt-3">
+                Transaction: {creationHash}
               </p>
             </div>
           </GlassCard>
