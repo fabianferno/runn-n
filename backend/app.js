@@ -16,15 +16,8 @@ class TileMath {
     return `${tileX}_${tileY}`;
   }
 
-  static getBucketFromTileId(tileId) {
-    const [tileX, tileY] = tileId.split("_").map(Number);
-    const bucketX = Math.floor(tileX / 100);
-    const bucketY = Math.floor(tileY / 100);
-    return { bucketX, bucketY };
-  }
-
-  static getChannelName(bucketX, bucketY) {
-    return `region:bx:${bucketX}:by:${bucketY}`;
+  static getGameChannelName() {
+    return "game:running-territory";
   }
 }
 
@@ -67,26 +60,23 @@ class RunningGameServer {
       }
 
       const tileId = TileMath.latLonToTileId(lat, lon);
-      const { bucketX, bucketY } = TileMath.getBucketFromTileId(tileId);
-
-      // Check if tile is already captured
-      if (this.tiles.has(tileId)) {
-        const tile = this.tiles.get(tileId);
-        return res.json({
-          success: false,
-          alreadyCaptured: true,
-          owner: tile.ownerId,
-          capturedAt: tile.capturedAt,
-        });
-      }
-
-      // Capture the tile
       const capturedAt = new Date().toISOString();
+
+      // Get previous owner (if any)
+      const previousOwner = this.tiles.get(tileId)?.ownerId;
+
+      // Capture/re-capture the tile (territory can change hands!)
       this.tiles.set(tileId, { ownerId: userId, capturedAt });
 
-      // Update user score
+      // Update scores
       const currentScore = this.leaderboard.get(userId) || 0;
       this.leaderboard.set(userId, currentScore + 1);
+
+      // If there was a previous owner, they lose a point
+      if (previousOwner && previousOwner !== userId) {
+        const previousScore = this.leaderboard.get(previousOwner) || 0;
+        this.leaderboard.set(previousOwner, Math.max(0, previousScore - 1));
+      }
 
       // Update user info
       if (!this.users.has(userId)) {
@@ -100,11 +90,12 @@ class RunningGameServer {
       user.score = currentScore + 1;
       user.lastSeen = new Date();
 
-      // Broadcast tile capture to region channel
-      this.broadcastToRegion(bucketX, bucketY, {
+      // Broadcast tile capture to all players
+      this.broadcastToAll({
         type: "tile.captured",
         tileId,
         ownerId: userId,
+        previousOwner,
         capturedAt,
       });
 
@@ -116,6 +107,8 @@ class RunningGameServer {
         tileId,
         capturedAt,
         newScore: currentScore + 1,
+        previousOwner,
+        territoryChanged: !!previousOwner,
       });
     });
 
@@ -168,12 +161,13 @@ class RunningGameServer {
 
   handleWebSocketMessage(ws, message) {
     switch (message.type) {
-      case "subscribe_region":
-        const { bucketX, bucketY } = message;
-        ws.region = { bucketX, bucketY };
+      case "join_game":
+        // Player joins the game
+        ws.userId = message.userId;
+        console.log(`🎮 Player ${message.userId} joined the game`);
 
-        // Send current snapshot
-        this.sendRegionSnapshot(ws, bucketX, bucketY);
+        // Send current game state
+        this.sendGameSnapshot(ws);
         break;
 
       case "position_update":
@@ -183,15 +177,11 @@ class RunningGameServer {
     }
   }
 
-  sendRegionSnapshot(ws, bucketX, bucketY) {
-    const tiles = [];
-    for (const [tileId, tile] of this.tiles.entries()) {
-      const { bucketX: tileBucketX, bucketY: tileBucketY } =
-        TileMath.getBucketFromTileId(tileId);
-      if (tileBucketX === bucketX && tileBucketY === bucketY) {
-        tiles.push({ tileId, ...tile });
-      }
-    }
+  sendGameSnapshot(ws) {
+    const tiles = Array.from(this.tiles.entries()).map(([tileId, tile]) => ({
+      tileId,
+      ...tile,
+    }));
 
     const leaderboard = Array.from(this.leaderboard.entries())
       .map(([userId, score]) => ({ userId, score }))
@@ -200,9 +190,7 @@ class RunningGameServer {
 
     ws.send(
       JSON.stringify({
-        type: "region.snapshot",
-        bucketX,
-        bucketY,
+        type: "game.snapshot",
         tiles,
         leaderboard,
         ts: new Date().toISOString(),
@@ -210,26 +198,19 @@ class RunningGameServer {
     );
   }
 
-  broadcastToRegion(bucketX, bucketY, message) {
-    const channelName = TileMath.getChannelName(bucketX, bucketY);
+  broadcastToAll(message) {
+    const channelName = TileMath.getGameChannelName();
     console.log(`📡 Broadcasting to ${channelName}:`, message.type);
 
     this.wss.clients.forEach((ws) => {
-      if (
-        ws.region &&
-        ws.region.bucketX === bucketX &&
-        ws.region.bucketY === bucketY
-      ) {
+      if (ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify(message));
       }
     });
   }
 
   broadcastPresence(userId, lat, lon, speed) {
-    const tileId = TileMath.latLonToTileId(lat, lon);
-    const { bucketX, bucketY } = TileMath.getBucketFromTileId(tileId);
-
-    this.broadcastToRegion(bucketX, bucketY, {
+    this.broadcastToAll({
       type: "presence.heartbeat",
       userId,
       lat,
@@ -245,16 +226,10 @@ class RunningGameServer {
       .sort((a, b) => b.score - a.score)
       .slice(0, 10);
 
-    this.wss.clients.forEach((ws) => {
-      if (ws.region) {
-        ws.send(
-          JSON.stringify({
-            type: "leaderboard.snapshot",
-            top: leaderboard,
-            ts: new Date().toISOString(),
-          })
-        );
-      }
+    this.broadcastToAll({
+      type: "leaderboard.snapshot",
+      top: leaderboard,
+      ts: new Date().toISOString(),
     });
   }
 
