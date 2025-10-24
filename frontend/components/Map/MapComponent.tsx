@@ -27,6 +27,7 @@ export const MapComponent: React.FC<MapComponentProps> = ({
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const gameRef = useRef<TerritoryGame | null>(null);
   const userMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const [realtimeHexes, setRealtimeHexes] = useState<Set<string>>(new Set());
 
   // Hooks
   const { currentLocation, startTracking, stopTracking } = useGeolocation();
@@ -249,9 +250,45 @@ export const MapComponent: React.FC<MapComponentProps> = ({
   useEffect(() => {
     if (isRecording && currentLocation) {
       addPoint(currentLocation);
+
+      // Capture hex in real-time
+      captureRealtimeHex(currentLocation.latitude, currentLocation.longitude);
     }
   }, [currentLocation, isRecording, addPoint]);
 
+  const captureRealtimeHex = async (lat: number, lng: number) => {
+    if (!gameRef.current) return;
+
+    try {
+      const h3 = await import("h3-js");
+      const hexId = h3.latLngToCell(lat, lng, 11);
+
+      // Check if we already captured this hex in this session
+      if (realtimeHexes.has(hexId)) {
+        return;
+      }
+
+      // Add to local set
+      setRealtimeHexes((prev) => new Set(prev).add(hexId));
+
+      // Update map immediately
+      gameRef.current.setTerritory(hexId, userId, userColor);
+
+      // Send to backend immediately
+      try {
+        await ApiService.batchUpdate({
+          updates: {
+            [userId]: [hexId],
+          },
+        });
+        console.log(`✅ Captured hex ${hexId} in real-time`);
+      } catch (error) {
+        console.error("Error sending real-time capture:", error);
+      }
+    } catch (error) {
+      console.error("Error capturing real-time hex:", error);
+    }
+  };
   // Update path line on map
   useEffect(() => {
     if (!mapRef.current || !mapRef.current.getSource("path-line")) return;
@@ -273,8 +310,8 @@ export const MapComponent: React.FC<MapComponentProps> = ({
   const handleStartTracking = () => {
     startTracking();
     startRecording();
+    setRealtimeHexes(new Set()); // Clear previous session hexes
   };
-
   // Stop tracking and send to backend
   // Stop tracking and send to backend
   const handleStopTracking = async () => {
@@ -284,6 +321,7 @@ export const MapComponent: React.FC<MapComponentProps> = ({
     if (result.matchedPath.length < 2) {
       alert("Path too short to capture territories");
       clearPath();
+      setRealtimeHexes(new Set());
       return;
     }
 
@@ -292,10 +330,9 @@ export const MapComponent: React.FC<MapComponentProps> = ({
         (coord) => [coord[1], coord[0]]
       );
 
-      console.log("Sending to backend:", {
+      console.log("Sending final path to backend:", {
         pathLength: pathCoordinates.length,
-        firstPoint: pathCoordinates[0],
-        lastPoint: pathCoordinates[pathCoordinates.length - 1],
+        realtimeHexesCaptured: realtimeHexes.size,
       });
 
       const response = await ApiService.capturePath({
@@ -306,28 +343,22 @@ export const MapComponent: React.FC<MapComponentProps> = ({
 
       console.log("Capture response:", response);
 
-      // Add captured hexes to map immediately
-      if (gameRef.current && response.hexPath) {
-        response.hexPath.forEach((hexId) => {
-          gameRef.current?.setTerritory(hexId, userId, userColor);
-        });
-      }
-
-      setCapturedHexes((prev) => prev + response.hexesCaptured);
+      // Update total count (accounting for hexes already captured in real-time)
+      const newHexes = response.hexesCaptured - realtimeHexes.size;
+      setCapturedHexes((prev) => prev + Math.max(0, newHexes));
 
       alert(
-        `Captured ${response.hexesCaptured} hexes!\n` +
-          `Path type: ${response.pathType}\n` +
+        `Session complete!\n` +
+          `Real-time hexes: ${realtimeHexes.size}\n` +
+          `Path fill hexes: ${response.hexesCaptured}\n` +
+          `Total new: ${response.hexesCaptured}\n` +
           `Distance: ${(distance / 1000).toFixed(2)} km`
       );
 
       clearPath();
+      setRealtimeHexes(new Set());
     } catch (error: any) {
       console.error("Error capturing path:", error);
-      console.error("Error details:", {
-        message: error.message,
-        response: error.response,
-      });
       alert(`Failed to capture path: ${error.message || "Please try again."}`);
     }
   };
