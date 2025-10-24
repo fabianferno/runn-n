@@ -201,6 +201,7 @@ function HomePage() {
       <BottomNav
         items={[
           { href: "/", label: "Map", icon: "M" },
+          { href: "/territory", label: "Territory", icon: "T" },
           { href: "/clans", label: "Clans", icon: "C" },
           { href: "/profile", label: "Profile", icon: "P" },
         ]}
