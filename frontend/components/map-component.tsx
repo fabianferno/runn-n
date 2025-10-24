@@ -23,6 +23,8 @@ interface MapComponentProps {
   hideLabels?: boolean;
   hideBuildingLabels?: boolean;
   hidePoiLabels?: boolean;
+  showGridOverlay?: boolean;
+  gridSize?: number; // in meters
   onMapLoad?: (map: mapboxgl.Map) => void;
   onMapMove?: (lng: number, lat: number, zoom: number) => void;
   onLocationFound?: (lng: number, lat: number) => void;
@@ -31,7 +33,7 @@ interface MapComponentProps {
 export const MapComponent: React.FC<MapComponentProps> = ({
   className = "",
   initialCenter = [-74.5, 40],
-  initialZoom = 9,
+  initialZoom = 17,
   mapStyle = "mapbox://styles/mapbox/dark-v11",
   showControls = true,
   showNavigationControl = true,
@@ -44,6 +46,8 @@ export const MapComponent: React.FC<MapComponentProps> = ({
   hideLabels = false,
   hideBuildingLabels = false,
   hidePoiLabels = false,
+  showGridOverlay = true,
+  gridSize = 20, // 20 meters
   onMapLoad,
   onMapMove,
   onLocationFound,
@@ -55,6 +59,108 @@ export const MapComponent: React.FC<MapComponentProps> = ({
   const [zoom, setZoom] = useState(initialZoom);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+
+  // Grid overlay function with fixed geographic coordinates
+  const drawGrid = useCallback(
+    (mapInstance: mapboxgl.Map) => {
+      if (!mapInstance || !showGridOverlay) return;
+
+      const zoom = mapInstance.getZoom();
+      const loadFeatures = zoom > 13; // Show grid when zoomed in enough
+
+      if (loadFeatures) {
+        // Get current map bounds to determine grid coverage
+        const bounds = mapInstance.getBounds();
+        if (!bounds) return;
+
+        const ne = bounds.getNorthEast();
+        const sw = bounds.getSouthWest();
+
+        // Create a fixed grid size in degrees (approximately 20 meters)
+        const gridSize = 0.0002; // ~20 meters in degrees
+
+        // Calculate grid bounds aligned to grid size
+        const minLng = Math.floor(sw.lng / gridSize) * gridSize;
+        const maxLng = Math.ceil(ne.lng / gridSize) * gridSize;
+        const minLat = Math.floor(sw.lat / gridSize) * gridSize;
+        const maxLat = Math.ceil(ne.lat / gridSize) * gridSize;
+
+        const gridFeatures: GeoJSON.Feature[] = [];
+
+        // Generate vertical grid lines (longitude lines)
+        for (let lng = minLng; lng <= maxLng; lng += gridSize) {
+          gridFeatures.push({
+            type: "Feature",
+            properties: {},
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [lng, minLat],
+                [lng, maxLat],
+              ],
+            },
+          });
+        }
+
+        // Generate horizontal grid lines (latitude lines)
+        for (let lat = minLat; lat <= maxLat; lat += gridSize) {
+          gridFeatures.push({
+            type: "Feature",
+            properties: {},
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [minLng, lat],
+                [maxLng, lat],
+              ],
+            },
+          });
+        }
+
+        // Add or update grid source
+        const gridSource = mapInstance.getSource("grid");
+        if (gridSource === undefined) {
+          mapInstance.addSource("grid", {
+            type: "geojson",
+            data: {
+              type: "FeatureCollection",
+              features: gridFeatures,
+            },
+          });
+
+          mapInstance.addLayer({
+            id: "grid_layer",
+            type: "line",
+            source: "grid",
+            layout: {
+              "line-join": "round",
+              "line-cap": "round",
+            },
+            paint: {
+              "line-color": "#777",
+              "line-width": 0.5,
+            },
+          });
+        } else {
+          (gridSource as any).setData({
+            type: "FeatureCollection",
+            features: gridFeatures,
+          });
+        }
+      }
+
+      // Show/hide grid based on zoom level
+      const gridLayer = mapInstance.getLayer("grid_layer");
+      if (gridLayer) {
+        mapInstance.setLayoutProperty(
+          "grid_layer",
+          "visibility",
+          loadFeatures ? "visible" : "none"
+        );
+      }
+    },
+    [showGridOverlay]
+  );
 
   // Memoize callbacks to prevent unnecessary re-renders
   const handleMapLoad = useCallback(
@@ -284,6 +390,9 @@ export const MapComponent: React.FC<MapComponentProps> = ({
         // Hide labels after map loads
         hideMapLabels(map.current);
 
+        // Initialize grid overlay
+        drawGrid(map.current);
+
         // Also try hiding labels after a short delay in case style isn't fully loaded
         setTimeout(() => {
           if (map.current) {
@@ -306,6 +415,9 @@ export const MapComponent: React.FC<MapComponentProps> = ({
 
           // Call onMapMove callback
           handleMapMove(newLng, newLat, newZoom);
+
+          // Update grid overlay
+          drawGrid(map.current);
         }
       });
 
@@ -316,6 +428,9 @@ export const MapComponent: React.FC<MapComponentProps> = ({
           hideMapLabels(map.current);
         }
       });
+
+      // Grid is now fixed and doesn't need to be regenerated on map moves
+      // This prevents performance issues and crashes
     }
 
     // Cleanup function

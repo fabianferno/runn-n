@@ -7,8 +7,6 @@ import { FloatingActionButton } from "@/components/floating-action-button";
 import { CameraComponent } from "@/components/camera-component";
 import { LocationVerificationComponent } from "@/components/location-verification-component";
 
-
-
 interface Quest {
   id: string;
   title: string;
@@ -31,11 +29,10 @@ interface Quest {
 export function QuestPage() {
   const [selectedQuest, setSelectedQuest] = useState<Quest | null>(null);
   const [showCamera, setShowCamera] = useState(false);
-  const [showLocationVerification, setShowLocationVerification] = useState(false);
+  const [showLocationVerification, setShowLocationVerification] =
+    useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
-
-
 
   const quests: Quest[] = [
     {
@@ -49,14 +46,15 @@ export function QuestPage() {
       analysisCriteria: "Does the image show the pothp in a road. ",
     },
     {
-      id: "2", 
+      id: "2",
       title: "Urban Explorer",
       description: "Find and photograph a street art mural in downtown",
       location: "Downtown District",
       reward: "300 XP + Explorer Badge",
       difficulty: "Easy",
       status: "available",
-      analysisCriteria: "Does the image contain colorful street art or graffiti on a wall or building?",
+      analysisCriteria:
+        "Does the image contain colorful street art or graffiti on a wall or building?",
     },
     {
       id: "3",
@@ -66,7 +64,8 @@ export function QuestPage() {
       reward: "800 XP + Peak Conqueror Badge",
       difficulty: "Hard",
       status: "available",
-      analysisCriteria: "Does the image show a mountain peak or elevated viewpoint with a panoramic landscape view?",
+      analysisCriteria:
+        "Does the image show a mountain peak or elevated viewpoint with a panoramic landscape view?",
     },
     {
       id: "4",
@@ -76,17 +75,20 @@ export function QuestPage() {
       reward: "400 XP + Water Badge",
       difficulty: "Easy",
       status: "available",
-      analysisCriteria: "Does the image show water (ocean, bay, or large body of water) with waterfront features like piers, docks, or shoreline?",
+      analysisCriteria:
+        "Does the image show water (ocean, bay, or large body of water) with waterfront features like piers, docks, or shoreline?",
     },
     {
       id: "5",
       title: "Tech Hub Discovery",
-      description: "Explore the heart of Silicon Valley and capture the innovation",
+      description:
+        "Explore the heart of Silicon Valley and capture the innovation",
       location: "Silicon Valley Tech Hub",
       reward: "600 XP + Innovation Badge",
       difficulty: "Medium",
       status: "available",
-      analysisCriteria: "Does the image show modern office buildings, tech company logos, or Silicon Valley landmarks?",
+      analysisCriteria:
+        "Does the image show modern office buildings, tech company logos, or Silicon Valley landmarks?",
     },
   ];
 
@@ -99,13 +101,13 @@ export function QuestPage() {
     if (selectedQuest) {
       setIsAnalyzing(true);
       setAnalysisError(null);
-      
+
       try {
         // Analyze the image with OpenAI
-        const response = await fetch('/api/analyze-image', {
-          method: 'POST',
+        const response = await fetch("/api/analyze-image", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
             imageData: photoData,
@@ -115,37 +117,41 @@ export function QuestPage() {
         });
 
         if (!response.ok) {
-          throw new Error('Failed to analyze image');
+          throw new Error("Failed to analyze image");
         }
 
         const result = await response.json();
-        
-        if (result.success && typeof result.verified === 'boolean') {
-          const updatedQuest = { 
-            ...selectedQuest, 
-            photo: photoData, 
+
+        if (result.success && typeof result.verified === "boolean") {
+          const updatedQuest = {
+            ...selectedQuest,
+            photo: photoData,
             status: "in_progress" as const,
             analysisResult: {
               verified: result.verified,
               confidence: result.verified ? 1.0 : 0.0,
-              explanation: result.verified ? "Image meets criteria" : "Image does not meet criteria"
-            }
+              explanation: result.verified
+                ? "Image meets criteria"
+                : "Image does not meet criteria",
+            },
           };
           setSelectedQuest(updatedQuest);
           setShowCamera(false);
-          
+
           // If image analysis passes, proceed to location verification
           if (result.verified) {
             setShowLocationVerification(true);
           } else {
-            setAnalysisError("Image analysis failed: Image does not meet the quest criteria");
+            setAnalysisError(
+              "Image analysis failed: Image does not meet the quest criteria"
+            );
           }
         } else {
-          throw new Error('Invalid analysis result');
+          throw new Error("Invalid analysis result");
         }
       } catch (error) {
-        console.error('Error analyzing image:', error);
-        setAnalysisError('Failed to analyze image. Please try again.');
+        console.error("Error analyzing image:", error);
+        setAnalysisError("Failed to analyze image. Please try again.");
       } finally {
         setIsAnalyzing(false);
       }
@@ -155,23 +161,23 @@ export function QuestPage() {
   const handleLocationVerified = async (proofs: any) => {
     if (selectedQuest) {
       // Update quest status to completed with IPFS data (if available)
-      const updatedQuest = { 
-        ...selectedQuest, 
+      const updatedQuest = {
+        ...selectedQuest,
         status: "completed" as const,
         ipfsHash: proofs.ipfsHash,
-        ipfsUrl: proofs.ipfsUrl
+        ipfsUrl: proofs.ipfsUrl,
       };
       setSelectedQuest(updatedQuest);
       setShowLocationVerification(false);
       setSelectedQuest(null);
-      
+
       // Show success message
       let successMessage = `Quest completed!`;
-      
+
       if (proofs.ipfsHash) {
         successMessage += `\n\nImage stored on IPFS:\nHash: ${proofs.ipfsHash}\nURL: ${proofs.ipfsUrl}`;
       }
-      
+
       alert(successMessage);
     }
   };
@@ -179,34 +185,40 @@ export function QuestPage() {
   const testImageAnalysis = async (imageData: string, criteria: string) => {
     setIsAnalyzing(true);
     setAnalysisError(null);
-    
+
     try {
-      const response = await fetch('/api/analyze-image', {
-        method: 'POST',
+      const response = await fetch("/api/analyze-image", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           imageData: imageData,
           criteria: criteria,
-          questId: 'test',
+          questId: "test",
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to analyze image');
+        throw new Error("Failed to analyze image");
       }
 
       const result = await response.json();
-      
-      if (result.success && typeof result.verified === 'boolean') {
-        alert(`Analysis Result:\n\nVerified: ${result.verified ? 'YES' : 'NO'}\n\n${result.verified ? '✅ Image meets the criteria!' : '❌ Image does not meet the criteria.'}`);
+
+      if (result.success && typeof result.verified === "boolean") {
+        alert(
+          `Analysis Result:\n\nVerified: ${result.verified ? "YES" : "NO"}\n\n${
+            result.verified
+              ? "✅ Image meets the criteria!"
+              : "❌ Image does not meet the criteria."
+          }`
+        );
       } else {
-        throw new Error('Invalid analysis result');
+        throw new Error("Invalid analysis result");
       }
     } catch (error) {
-      console.error('Error analyzing image:', error);
-      setAnalysisError('Failed to analyze image. Please try again.');
+      console.error("Error analyzing image:", error);
+      setAnalysisError("Failed to analyze image. Please try again.");
     } finally {
       setIsAnalyzing(false);
     }
@@ -268,17 +280,20 @@ export function QuestPage() {
         </div>
 
         {/* Test Component Button */}
-       
-
 
         {/* Quests List */}
         <div className="space-y-3">
-          <h2 className="text-lg font-bold text-foreground mb-3">Available Quests</h2>
+          <h2 className="text-lg font-bold text-foreground mb-3">
+            Available Quests
+          </h2>
           {quests.map((quest, idx) => (
             <GlassCard
               key={quest.id}
               className="p-4 cursor-pointer hover:bg-white/15 transition-all card-hover touch-manipulation"
-              style={{ animationDelay: `${idx * 0.1}s`, touchAction: 'manipulation' }}
+              style={{
+                animationDelay: `${idx * 0.1}s`,
+                touchAction: "manipulation",
+              }}
               onClick={() => handleQuestClick(quest)}
               onTouchEnd={(e: React.TouchEvent) => {
                 e.preventDefault();
@@ -291,11 +306,19 @@ export function QuestPage() {
                     <h3 className="font-semibold text-foreground">
                       {quest.title}
                     </h3>
-                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${getDifficultyColor(quest.difficulty)}`}>
+                    <span
+                      className={`text-xs px-2 py-1 rounded-full font-medium ${getDifficultyColor(
+                        quest.difficulty
+                      )}`}
+                    >
                       {quest.difficulty}
                     </span>
-                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${getStatusColor(quest.status)}`}>
-                      {quest.status.replace('_', ' ')}
+                    <span
+                      className={`text-xs px-2 py-1 rounded-full font-medium ${getStatusColor(
+                        quest.status
+                      )}`}
+                    >
+                      {quest.status.replace("_", " ")}
                     </span>
                   </div>
                   <p className="text-sm text-muted-foreground mb-2">
@@ -323,8 +346,6 @@ export function QuestPage() {
         </div>
       </div>
 
-  
-
       {/* Camera Component */}
       {showCamera && selectedQuest && (
         <CameraComponent
@@ -340,8 +361,14 @@ export function QuestPage() {
 
       {/* Analysis Status */}
       {isAnalyzing && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" style={{ touchAction: 'manipulation' }}>
-          <GlassCard className="w-full max-w-md p-6 text-center" style={{ touchAction: 'manipulation' }}>
+        <div
+          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+          style={{ touchAction: "manipulation" }}
+        >
+          <GlassCard
+            className="w-full max-w-md p-6 text-center"
+            style={{ touchAction: "manipulation" }}
+          >
             <div className="text-4xl mb-4 animate-spin">🤖</div>
             <h3 className="text-xl font-bold text-foreground mb-2">
               Analyzing Image
@@ -355,8 +382,14 @@ export function QuestPage() {
 
       {/* Analysis Error */}
       {analysisError && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" style={{ touchAction: 'manipulation' }}>
-          <GlassCard className="w-full max-w-md p-6" style={{ touchAction: 'manipulation' }}>
+        <div
+          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+          style={{ touchAction: "manipulation" }}
+        >
+          <GlassCard
+            className="w-full max-w-md p-6"
+            style={{ touchAction: "manipulation" }}
+          >
             <div className="text-center mb-4">
               <div className="text-4xl mb-2">❌</div>
               <h3 className="text-xl font-bold text-red-400 mb-2">
@@ -378,7 +411,7 @@ export function QuestPage() {
                   setShowCamera(true);
                 }}
                 className="flex-1 px-4 py-2 bg-primary/80 text-white rounded-lg hover:bg-primary transition-colors min-h-[44px] touch-manipulation"
-                style={{ touchAction: 'manipulation' }}
+                style={{ touchAction: "manipulation" }}
               >
                 Retake Photo
               </button>
@@ -393,7 +426,7 @@ export function QuestPage() {
                   setSelectedQuest(null);
                 }}
                 className="flex-1 px-4 py-2 bg-gray-500/20 text-gray-300 rounded-lg hover:bg-gray-500/30 transition-colors min-h-[44px] touch-manipulation"
-                style={{ touchAction: 'manipulation' }}
+                style={{ touchAction: "manipulation" }}
               >
                 Cancel
               </button>
@@ -415,7 +448,6 @@ export function QuestPage() {
       )}
 
       {/* Test Component */}
-     
 
       <BottomNav
         items={[
