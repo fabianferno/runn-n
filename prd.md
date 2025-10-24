@@ -1,4 +1,28 @@
-Users run with the running app. Each client streams GPS positions to the server via Yellow Network websocket channels. The server maps each position to a 10m x 10m grid cell (tile). When a user first enters an unclaimed tile, the server atomically claims it for that user and broadcasts an update. Leaderboards are maintained in Redis for realtime ranking and persisted to Postgres/PostGIS for history and queries. Mapbox renders live claims and nearby runners.
+Run-n is a gamified running app experience. Built as a nextjs web app. Capture territories by running.
+# **Demo Flow: User Story**
+- User signs in using their wallet  
+- User lands a home page  
+  - Home page is a map UI  
+  - Bottom nav has three main action buttons  
+    - START  
+      - Starts streaming coordinates to the yellow state clearnet  
+    - STOP  
+      - Settle the channel state on-chain  
+      - Settle the datacoin capture events and mint them datacoin if valid through LLM validation  
+    - MINE (get data coin flow)  
+      - Select one of the quests  
+      - Take a picture  
+      - Submit zktls \+ picture proof to mint a datacoin for that quest  
+      - Emit the datacoin capture event  
+  - Map contains the following:  
+    - pointers of all the active players in the game \- also inactive but last logged in users.   
+    - all the territories captured previously \- one color per player \- user mercator planes for coloring the map territories  
+    - pointers for each valid datacoin mined at places  
+- User opens leaderboard page  
+  - Shows aggregate of all the runners and their territories captured  
+- User opens quests page  
+  - Display quests  
+  - Create a quest
 
 # **2 — Components**
 
@@ -255,25 +279,4 @@ SQL tables
 
 * Show nearby runners as animated markers. Use WebSocket presence messages.
 
-# **10 — Privacy and UX**
-
-* Consider anonymous or alias owner names on map to avoid doxxing.
-
-# **11 — Anti-cheat and location spoofing mitigations**
-
-Basic MVP protections:
-
-* Reject low accuracy updates (accuracy \> 25m).
-
-* Speed checks: flag positions that imply unrealistic teleportation.
-
-* Use sensor fusion: require occasional GPS fixes over time to validate continuous presence.
-
-* Rate-limit tile captures per user to avoid automated farming.
-
-* Heuristic detection: many rapid captures across far locations \-\> flag and review.  
-   More advanced:
-
-* IP \+ device fingerprinting, detect emulators.
-
-* Proof-of-presence via BLE / NFC among nearby users for high-value captures.  	 
+ 
