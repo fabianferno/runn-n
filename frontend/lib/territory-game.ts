@@ -18,16 +18,25 @@ export class TerritoryGame {
   private players: Record<string, Player>;
   private hoveredHex: string | null = null;
   private initialized: boolean = false;
+  private minZoomLevel: number = 12; // Minimum zoom level to show grid
+  private isGridVisible: boolean = false;
 
-  // Add event handler references
+  // Event handler references
   private clickHandler?: (e: mapboxgl.MapMouseEvent) => void;
   private mousemoveHandler?: (e: mapboxgl.MapMouseEvent) => void;
   private mouseleaveHandler?: () => void;
+  private zoomEndHandler?: () => void;
+  private moveEndHandler?: () => void;
 
-  constructor(map: mapboxgl.Map, resolution: number = 11) {
+  constructor(
+    map: mapboxgl.Map,
+    resolution: number = 11,
+    minZoomLevel: number = 12
+  ) {
     this.map = map;
     this.territories = new Map();
     this.resolution = resolution;
+    this.minZoomLevel = minZoomLevel;
     this.players = {
       player1: { color: "#FF6B6B", name: "Red Team" },
       player2: { color: "#4ECDC4", name: "Blue Team" },
@@ -35,13 +44,95 @@ export class TerritoryGame {
       neutral: { color: "#E8E8E8", name: "Neutral" },
     };
 
-    // Wait for map to be ready before initializing
+    // Wait for map to be ready
     if (this.map.isStyleLoaded()) {
-      this.initializeMap();
+      this.initializeListeners();
     } else {
       this.map.once("load", () => {
-        this.initializeMap();
+        this.initializeListeners();
       });
+    }
+  }
+
+  initializeListeners() {
+    console.log("Setting up zoom listeners...");
+
+    // Set up zoom listener
+    this.zoomEndHandler = () => {
+      const currentZoom = this.map.getZoom();
+      console.log("Current zoom:", currentZoom);
+
+      if (currentZoom >= this.minZoomLevel && !this.isGridVisible) {
+        // Zoom level is sufficient, show the grid
+        this.showGrid();
+      } else if (currentZoom < this.minZoomLevel && this.isGridVisible) {
+        // Zoom level too low, hide the grid
+        this.hideGrid();
+      }
+    };
+
+    // Set up move listener (only active when grid is visible)
+    this.moveEndHandler = () => {
+      if (this.isGridVisible) {
+        this.expandGrid();
+      }
+    };
+
+    this.map.on("zoomend", this.zoomEndHandler);
+    this.map.on("moveend", this.moveEndHandler);
+
+    // Check initial zoom level
+    const initialZoom = this.map.getZoom();
+    if (initialZoom >= this.minZoomLevel) {
+      this.showGrid();
+    }
+  }
+
+  showGrid() {
+    if (this.isGridVisible) return;
+
+    console.log("Showing grid...");
+    this.isGridVisible = true;
+    this.initializeMap();
+  }
+
+  hideGrid() {
+    if (!this.isGridVisible) return;
+
+    console.log("Hiding grid...");
+    this.isGridVisible = false;
+
+    try {
+      // Remove event listeners
+      if (this.clickHandler) {
+        this.map.off("click", "territory-fill", this.clickHandler);
+      }
+      if (this.mousemoveHandler) {
+        this.map.off("mousemove", "territory-fill", this.mousemoveHandler);
+      }
+      if (this.mouseleaveHandler) {
+        this.map.off("mouseleave", "territory-fill", this.mouseleaveHandler);
+      }
+
+      // Remove layers
+      if (this.map.getLayer("territory-hover")) {
+        this.map.removeLayer("territory-hover");
+      }
+      if (this.map.getLayer("territory-outline")) {
+        this.map.removeLayer("territory-outline");
+      }
+      if (this.map.getLayer("territory-fill")) {
+        this.map.removeLayer("territory-fill");
+      }
+
+      // Remove source
+      if (this.map.getSource("territories")) {
+        this.map.removeSource("territories");
+      }
+
+      this.initialized = false;
+    } catch (error) {
+      console.error("Error hiding grid:", error);
     }
   }
 
@@ -54,7 +145,7 @@ export class TerritoryGame {
     try {
       console.log("Initializing territory game...");
 
-      // Generate initial grid for visible area
+      // Generate initial grid for visible area only
       const bounds = this.map.getBounds();
       if (!bounds) {
         throw new Error("Map bounds not available");
@@ -71,7 +162,6 @@ export class TerritoryGame {
         ],
       ];
 
-      // H3 v4.x uses polygonToCells, v3.x uses polyfill
       let hexagons: string[];
 
       try {
@@ -87,18 +177,17 @@ export class TerritoryGame {
         }
       } catch (error) {
         console.error("H3 Error:", error);
-        // Fallback: generate a small grid manually
         hexagons = this.generateFallbackGrid(bounds);
       }
 
-      console.log("Generated hexagons:", hexagons.length);
+      console.log(`Generated ${hexagons.length} hexagons for viewport`);
 
       // Initialize all as neutral
       hexagons.forEach((hex) => {
         this.territories.set(hex, "neutral");
       });
 
-      // Check if source already exists (in case of re-initialization)
+      // Check if source already exists
       if (this.map.getSource("territories")) {
         this.map.removeLayer("territory-hover");
         this.map.removeLayer("territory-outline");
@@ -152,12 +241,10 @@ export class TerritoryGame {
       console.log("Territory game initialized successfully");
     } catch (error) {
       console.error("Error initializing territory game:", error);
-      // Fallback: create a simple grid without H3
       this.createFallbackGrid();
     }
   }
 
-  // Fallback method if H3 has issues
   generateFallbackGrid(bounds: mapboxgl.LngLatBounds): string[] {
     try {
       const center = bounds.getCenter();
@@ -167,7 +254,6 @@ export class TerritoryGame {
         this.resolution
       );
 
-      // Get ring of hexagons around center
       const hexagons = [centerHex];
       for (let k = 1; k <= 5; k++) {
         const ring = h3.gridDisk(centerHex, k);
@@ -177,7 +263,6 @@ export class TerritoryGame {
       return hexagons;
     } catch (error) {
       console.error("Error generating fallback grid:", error);
-      // Ultimate fallback: return empty array
       return [];
     }
   }
@@ -196,8 +281,7 @@ export class TerritoryGame {
       return;
     }
 
-    // Create a simple square grid as fallback
-    const gridSize = 0.01; // degrees
+    const gridSize = 0.01;
     const features = [];
 
     for (let lng = bounds.getWest(); lng < bounds.getEast(); lng += gridSize) {
@@ -234,14 +318,12 @@ export class TerritoryGame {
       }
     }
 
-    // Check if source already exists
     if (this.map.getSource("territories")) {
       this.map.removeLayer("territory-outline");
       this.map.removeLayer("territory-fill");
       this.map.removeSource("territories");
     }
 
-    // Add source and layers
     this.map.addSource("territories", {
       type: "geojson",
       data: {
@@ -250,7 +332,6 @@ export class TerritoryGame {
       },
     });
 
-    // Add layers (same as H3 version)
     this.map.addLayer({
       id: "territory-fill",
       type: "fill",
@@ -280,7 +361,6 @@ export class TerritoryGame {
     const features: any[] = [];
 
     this.territories.forEach((owner, hex) => {
-      // H3 v4 uses cellToBoundary, v3 uses h3ToGeoBoundary
       let boundary;
 
       try {
@@ -320,7 +400,6 @@ export class TerritoryGame {
   }
 
   setupInteractions() {
-    // Store handler references
     this.clickHandler = (
       e: mapboxgl.MapMouseEvent & {
         features?: mapboxgl.MapboxGeoJSONFeature[];
@@ -373,21 +452,17 @@ export class TerritoryGame {
       this.hoveredHex = null;
     };
 
-    // Add event listeners
     this.map.on("click", "territory-fill", this.clickHandler);
     this.map.on("mousemove", "territory-fill", this.mousemoveHandler);
     this.map.on("mouseleave", "territory-fill", this.mouseleaveHandler);
   }
-  // Capture a territory
+
   captureTerritory(hex: string, player: string) {
     this.territories.set(hex, player);
     this.updateMap();
-
-    // Emit event for multiplayer sync (WebSocket, Firebase, etc.)
     this.onTerritoryCapture({ hex, player });
   }
 
-  // Update multiple territories at once (for network updates)
   updateTerritories(updates: TerritoryCapture[]) {
     updates.forEach(({ hex, player }) => {
       this.territories.set(hex, player);
@@ -395,7 +470,6 @@ export class TerritoryGame {
     this.updateMap();
   }
 
-  // Refresh the map
   updateMap() {
     const source = this.map.getSource("territories");
     if (source && source.type === "geojson") {
@@ -403,7 +477,6 @@ export class TerritoryGame {
     }
   }
 
-  // Get territory stats
   getStats() {
     const stats: Record<string, number> = {};
     Object.keys(this.players).forEach((player) => {
@@ -417,21 +490,17 @@ export class TerritoryGame {
     return stats;
   }
 
-  // Expand grid dynamically when map moves
   expandGrid() {
-    if (!this.initialized) {
-      console.warn("Cannot expand grid before initialization");
+    if (!this.initialized || !this.isGridVisible) {
       return;
     }
 
     try {
       const bounds = this.map.getBounds();
       if (!bounds) {
-        console.warn("Map bounds not available for grid expansion");
         return;
       }
 
-      // Create a proper polygon array for H3
       const bbox = [
         [
           [bounds.getWest(), bounds.getSouth()],
@@ -466,83 +535,36 @@ export class TerritoryGame {
       });
 
       if (newHexes) {
+        console.log(
+          `Added ${hexagons.length - this.territories.size} new hexagons`
+        );
         this.updateMap();
       }
     } catch (error) {
       console.error("Error expanding grid with H3:", error);
-      this.expandFallbackGrid();
     }
   }
 
-  expandFallbackGrid() {
-    const bounds = this.map.getBounds();
-    if (!bounds) {
-      console.warn("No map bounds available for fallback grid expansion");
-      return;
-    }
-
-    const gridSize = 0.01;
-    let newHexes = false;
-
-    // FIX: Add 'let' declaration for 'lat'
-    for (let lng = bounds.getWest(); lng < bounds.getEast(); lng += gridSize) {
-      for (
-        let lat = bounds.getSouth(); // <-- Added 'let' here
-        lat < bounds.getNorth();
-        lat += gridSize
-      ) {
-        const id = `${lng.toFixed(4)}_${lat.toFixed(4)}`;
-        if (!this.territories.has(id)) {
-          this.territories.set(id, "neutral");
-          newHexes = true;
-        }
-      }
-    }
-
-    if (newHexes) {
-      this.updateMap();
-    }
-  }
-  // Callback for multiplayer sync
   onTerritoryCapture(data: TerritoryCapture) {
-    // Implement your WebSocket/Firebase logic here
     console.log("Territory captured:", data);
   }
 
-  // Clean up event listeners
-  // Clean up event listeners
   destroy() {
-    if (!this.initialized) return;
-
     try {
-      // Remove event listeners with proper handler references
-      if (this.clickHandler) {
-        this.map.off("click", "territory-fill", this.clickHandler);
+      // Remove zoom and move listeners
+      if (this.zoomEndHandler) {
+        this.map.off("zoomend", this.zoomEndHandler);
       }
-      if (this.mousemoveHandler) {
-        this.map.off("mousemove", "territory-fill", this.mousemoveHandler);
-      }
-      if (this.mouseleaveHandler) {
-        this.map.off("mouseleave", "territory-fill", this.mouseleaveHandler);
+      if (this.moveEndHandler) {
+        this.map.off("moveend", this.moveEndHandler);
       }
 
-      // Remove layers
-      if (this.map.getLayer("territory-hover")) {
-        this.map.removeLayer("territory-hover");
-      }
-      if (this.map.getLayer("territory-outline")) {
-        this.map.removeLayer("territory-outline");
-      }
-      if (this.map.getLayer("territory-fill")) {
-        this.map.removeLayer("territory-fill");
+      // Hide grid (will clean up layers and interactions)
+      if (this.isGridVisible) {
+        this.hideGrid();
       }
 
-      // Remove source
-      if (this.map.getSource("territories")) {
-        this.map.removeSource("territories");
-      }
-
-      this.initialized = false;
+      this.territories.clear();
     } catch (error) {
       console.error("Error during cleanup:", error);
     }
