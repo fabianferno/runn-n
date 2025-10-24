@@ -10,7 +10,11 @@ const router = Router();
  * GET /api/territories/viewport
  * Get territories in viewport
  */
-router.get("/viewport", (req: Request, res: Response) => {
+/**
+ * GET /api/territories/viewport
+ * Get territories in viewport
+ */
+router.get("/viewport", async (req: Request, res: Response) => {
   try {
     const { bounds, resolution } = req.query as any;
 
@@ -31,14 +35,22 @@ router.get("/viewport", (req: Request, res: Response) => {
       });
     }
 
-    const result = RegionService.getTerritoriesInViewport(
+    const result = await RegionService.getTerritoriesInViewport(
       { west, south, east, north },
-      parseInt(resolution) || 8
+      parseInt(resolution) || 11
     );
+
+    console.log("📤 Sending response:", {
+      regionCount: result.regionIds.length,
+      totalHexes: result.totalHexes,
+      hasRegions: Object.keys(result.regions).length > 0,
+    });
 
     res.json({
       success: true,
-      ...result,
+      regions: result.regions,
+      regionIds: result.regionIds,
+      totalHexes: result.totalHexes,
       timestamp: Date.now(),
     });
   } catch (error: any) {
@@ -55,10 +67,14 @@ router.get("/viewport", (req: Request, res: Response) => {
  * GET /api/territories/region/:regionId
  * Get single region
  */
-router.get("/region/:regionId", (req: Request, res: Response) => {
+/**
+ * GET /api/territories/region/:regionId
+ * Get single region
+ */
+router.get("/region/:regionId", async (req: Request, res: Response) => {
   try {
     const { regionId } = req.params;
-    const region = RegionService.getRegion(regionId);
+    const region = await RegionService.getRegion(regionId); // Add await here
 
     if (!region) {
       return res.status(404).json({

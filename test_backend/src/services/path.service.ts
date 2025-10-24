@@ -1,10 +1,10 @@
 import { PathInput, PathResponse, PathHistory } from "../types";
 import { H3Service } from "./h3.service";
-import { mockPaths, mockRegions, mockUsers } from "../data/mock-data";
+import { mockUsers } from "../data/mock-data";
+import { RegionModel } from "../models/region.model";
+import { PathModel } from "../models/path.model";
 
 export class PathService {
-  private static pathCounter = Date.now();
-
   /**
    * Process a path capture request
    */
@@ -33,66 +33,66 @@ export class PathService {
       let interiorHexes: number;
 
       if (uniqueHexPath.length === 1) {
-        // Single hex
         pathType = "single_hex";
         filledHexes = uniqueHexPath;
         boundaryHexes = 1;
         interiorHexes = 0;
       } else if (isLoop) {
-        // STEP 4: Fill polygon (closed loop)
         pathType = "closed_loop";
-        filledHexes = H3Service.fillPolygon(input.path, 8);
+        filledHexes = H3Service.fillPolygon(input.path, 11);
         boundaryHexes = uniqueHexPath.length;
         interiorHexes = filledHexes.length - boundaryHexes;
       } else {
-        // Open path - just the boundary
         pathType = "open_path";
         filledHexes = H3Service.getPathHexes(uniqueHexPath);
         boundaryHexes = filledHexes.length;
         interiorHexes = 0;
       }
 
-      // STEP 5: Group by regions
+      console.log(`Processing ${pathType}: ${filledHexes.length} hexes`);
+
+      // STEP 4: Group by regions
       const regionsMap = H3Service.groupByRegion(filledHexes, 4);
       const regionsAffected = Array.from(regionsMap.keys());
 
-      // STEP 6: Detect conflicts and update mock data
+      // STEP 5: Detect conflicts and update MongoDB
       const conflicts: { [hexId: string]: string } = {};
 
-      regionsMap.forEach((hexes, regionId) => {
-        // Get or create region
-        let region = mockRegions.get(regionId);
+      for (const [regionId, hexes] of regionsMap.entries()) {
+        // Get or create region in MongoDB
+        let region = await RegionModel.findById(regionId);
+
         if (!region) {
-          region = {
+          region = new RegionModel({
             _id: regionId,
-            territories: {},
+            territories: new Map(),
             metadata: {
               hexCount: 0,
               lastUpdate: Date.now(),
-              playerCounts: {},
+              playerCounts: new Map(),
               contestedBy: [],
             },
-          };
-          mockRegions.set(regionId, region);
+          });
         }
 
         // Update territories
-        hexes.forEach((hexId) => {
+        for (const hexId of hexes) {
           // Check for conflicts
-          if (
-            region!.territories[hexId] &&
-            region!.territories[hexId].user !== input.user
-          ) {
-            conflicts[hexId] = region!.territories[hexId].user;
+          const existingTerritory = region.territories.get(hexId);
+          if (existingTerritory && existingTerritory.user !== input.user) {
+            conflicts[hexId] = existingTerritory.user;
 
             // Decrement previous owner's count
-            const prevUser = region!.territories[hexId].user;
-            region!.metadata.playerCounts[prevUser] =
-              (region!.metadata.playerCounts[prevUser] || 1) - 1;
+            const prevCount =
+              region.metadata.playerCounts.get(existingTerritory.user) || 0;
+            region.metadata.playerCounts.set(
+              existingTerritory.user,
+              Math.max(0, prevCount - 1)
+            );
           }
 
           // Update territory
-          region!.territories[hexId] = {
+          region.territories.set(hexId, {
             user: input.user,
             color: input.color,
             capturedAt: Date.now(),
@@ -102,21 +102,29 @@ export class PathService {
                 : pathType === "open_path"
                 ? "line"
                 : "click",
-          };
-        });
+          });
+        }
 
         // Update metadata
-        region.metadata.hexCount = Object.keys(region.territories).length;
+        region.metadata.hexCount = region.territories.size;
         region.metadata.lastUpdate = Date.now();
-        region.metadata.playerCounts[input.user] =
-          (region.metadata.playerCounts[input.user] || 0) + hexes.length;
+
+        const currentCount = region.metadata.playerCounts.get(input.user) || 0;
+        region.metadata.playerCounts.set(
+          input.user,
+          currentCount + hexes.length
+        );
 
         if (!region.metadata.contestedBy.includes(input.user)) {
           region.metadata.contestedBy.push(input.user);
         }
-      });
 
-      // STEP 7: Update user stats
+        // Save to MongoDB
+        await region.save();
+        console.log(`✅ Saved region ${regionId} with ${hexes.length} hexes`);
+      }
+
+      // STEP 6: Update user stats (still using mock data)
       const user = mockUsers.get(input.user);
       if (user) {
         user.stats.totalHexes +=
@@ -136,10 +144,8 @@ export class PathService {
         });
       }
 
-      // STEP 8: Create path history
-      const pathId = `path_${this.pathCounter++}`;
-      const pathHistory: PathHistory = {
-        _id: pathId,
+      // STEP 7: Create path history in MongoDB
+      const pathDoc = new PathModel({
         user: input.user,
         type: pathType,
         coordinates: input.path,
@@ -148,14 +154,15 @@ export class PathService {
         boundaryHexes,
         interiorHexes,
         regionsAffected,
-        conflicts,
+        conflicts: new Map(Object.entries(conflicts)),
         timestamp: Date.now(),
         processingTime: Date.now() - startTime,
-      };
+      });
 
-      mockPaths.set(pathId, pathHistory);
+      await pathDoc.save();
+      console.log(`✅ Saved path ${pathDoc._id}`);
 
-      // STEP 9: Return response
+      // STEP 8: Return response
       const response: PathResponse = {
         success: true,
         pathType,
@@ -168,7 +175,7 @@ export class PathService {
         regionsAffected,
         conflicts,
         processingTime: Date.now() - startTime,
-        pathId,
+        pathId: (pathDoc._id as any).toString(),
       };
 
       return response;
@@ -186,7 +193,7 @@ export class PathService {
       throw new Error("Path cannot be empty");
     }
 
-    if (input.path.length > 100) {
+    if (input.path.length > 500) {
       throw new Error("Path has too many points (max 100)");
     }
 

@@ -9,6 +9,7 @@ import { usePathTracking } from "@/hooks/usePathTracking";
 import { ApiService } from "@/services/api.service";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || "";
+// Add at the top of MapComponent after imports
 
 interface MapComponentProps {
   userId: string;
@@ -19,6 +20,9 @@ export const MapComponent: React.FC<MapComponentProps> = ({
   userId,
   userColor,
 }) => {
+  useEffect(() => {
+    console.log("API Base URL:", process.env.NEXT_PUBLIC_API_URL);
+  }, []);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const gameRef = useRef<TerritoryGame | null>(null);
@@ -71,20 +75,15 @@ export const MapComponent: React.FC<MapComponentProps> = ({
 
     mapRef.current = map;
 
-    map.on("load", () => {
+    map.on("load", async () => {
+      console.log("Map loaded, initializing game...");
+
       // Initialize territory game
       gameRef.current = new TerritoryGame(map, 11, 12);
-      map.addControl(new mapboxgl.NavigationControl(), "bottom-right");
-      const geolocateControl = new mapboxgl.GeolocateControl({
-        positionOptions: {
-          enableHighAccuracy: true,
-        },
-        trackUserLocation: true,
-        showUserHeading: true,
-        showUserLocation: true,
-      });
 
-      map.addControl(geolocateControl, "bottom-right");
+      // Wait a bit for TerritoryGame to initialize
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
       // Add path line source
       map.addSource("path-line", {
         type: "geojson",
@@ -104,10 +103,33 @@ export const MapComponent: React.FC<MapComponentProps> = ({
         source: "path-line",
         paint: {
           "line-color": userColor,
-          "line-width": 2,
-          "line-opacity": 0.3,
+          "line-width": 4,
+          "line-opacity": 0.8,
         },
       });
+
+      // Load existing territories from MongoDB
+      await loadTerritories();
+
+      // Add navigation controls
+      map.addControl(new mapboxgl.NavigationControl(), "bottom-right");
+
+      // Add geolocate control
+      const geolocateControl = new mapboxgl.GeolocateControl({
+        positionOptions: {
+          enableHighAccuracy: true,
+        },
+        trackUserLocation: true,
+        showUserHeading: true,
+        showUserLocation: true,
+      });
+
+      map.addControl(geolocateControl, "bottom-right");
+    });
+
+    // Reload territories when map moves
+    map.on("moveend", async () => {
+      await loadTerritories();
     });
 
     return () => {
@@ -118,6 +140,79 @@ export const MapComponent: React.FC<MapComponentProps> = ({
     };
   }, [userId, userColor]);
 
+  const loadTerritories = async () => {
+    if (!mapRef.current || !gameRef.current) {
+      console.warn("Map or game not ready");
+      return;
+    }
+
+    try {
+      const bounds = mapRef.current.getBounds();
+
+      if (!bounds) {
+        console.warn("Map bounds not available yet");
+        return;
+      }
+
+      console.log("🔍 Loading territories for bounds:", {
+        west: bounds.getWest(),
+        south: bounds.getSouth(),
+        east: bounds.getEast(),
+        north: bounds.getNorth(),
+      });
+
+      const viewportData = await ApiService.getTerritoriesInViewport(
+        {
+          west: bounds.getWest(),
+          south: bounds.getSouth(),
+          east: bounds.getEast(),
+          north: bounds.getNorth(),
+        },
+        11
+      );
+
+      console.log("📦 Received viewport data:", {
+        regionCount: Object.keys(viewportData.regions || {}).length,
+        totalHexes: viewportData.totalHexes,
+        regions: viewportData.regions,
+      });
+
+      if (
+        viewportData.regions &&
+        Object.keys(viewportData.regions).length > 0
+      ) {
+        let totalLoaded = 0;
+
+        Object.entries(viewportData.regions).forEach(([regionId, hexes]) => {
+          console.log(
+            `🔧 Processing region ${regionId} with ${
+              Object.keys(hexes as object).length
+            } hexes`
+          );
+
+          Object.entries(
+            hexes as Record<string, { user: string; color: string }>
+          ).forEach(([hexId, territory]) => {
+            console.log(
+              `  Adding hex ${hexId} for user ${territory.user} (${territory.color})`
+            );
+            gameRef.current?.setTerritory(
+              hexId,
+              territory.user,
+              territory.color
+            );
+            totalLoaded++;
+          });
+        });
+
+        console.log(`✅ Loaded ${totalLoaded} hexes from MongoDB to map`);
+      } else {
+        console.log("⚠️ No territories found in viewport");
+      }
+    } catch (error) {
+      console.error("❌ Error loading territories:", error);
+    }
+  };
   // Update user marker
   useEffect(() => {
     if (!mapRef.current || !currentLocation) return;
@@ -181,22 +276,28 @@ export const MapComponent: React.FC<MapComponentProps> = ({
   };
 
   // Stop tracking and send to backend
+  // Stop tracking and send to backend
   const handleStopTracking = async () => {
     const result = await stopRecording();
     stopTracking();
 
     if (result.matchedPath.length < 2) {
       alert("Path too short to capture territories");
+      clearPath();
       return;
     }
 
     try {
-      // Convert matched path to lat/lng format for backend
       const pathCoordinates: [number, number][] = result.matchedPath.map(
-        (coord) => [coord[1], coord[0]] // Convert [lng, lat] to [lat, lng]
+        (coord) => [coord[1], coord[0]]
       );
 
-      // Send to backend
+      console.log("Sending to backend:", {
+        pathLength: pathCoordinates.length,
+        firstPoint: pathCoordinates[0],
+        lastPoint: pathCoordinates[pathCoordinates.length - 1],
+      });
+
       const response = await ApiService.capturePath({
         user: userId,
         color: userColor,
@@ -204,6 +305,14 @@ export const MapComponent: React.FC<MapComponentProps> = ({
       });
 
       console.log("Capture response:", response);
+
+      // Add captured hexes to map immediately
+      if (gameRef.current && response.hexPath) {
+        response.hexPath.forEach((hexId) => {
+          gameRef.current?.setTerritory(hexId, userId, userColor);
+        });
+      }
+
       setCapturedHexes((prev) => prev + response.hexesCaptured);
 
       alert(
@@ -212,11 +321,14 @@ export const MapComponent: React.FC<MapComponentProps> = ({
           `Distance: ${(distance / 1000).toFixed(2)} km`
       );
 
-      // Clear path
       clearPath();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error capturing path:", error);
-      alert("Failed to capture path. Please try again.");
+      console.error("Error details:", {
+        message: error.message,
+        response: error.response,
+      });
+      alert(`Failed to capture path: ${error.message || "Please try again."}`);
     }
   };
 
@@ -357,7 +469,29 @@ export const MapComponent: React.FC<MapComponentProps> = ({
           >
             🪙 Submit Data Coin
           </button>
-
+          <button
+            onClick={async () => {
+              try {
+                const response = await fetch(`https://remo.crevn.xyz/health`);
+                const data = await response.json();
+                alert("Backend is accessible! " + JSON.stringify(data));
+              } catch (error: any) {
+                alert("Cannot reach backend: " + error.message);
+              }
+            }}
+            style={{
+              padding: "10px",
+              background: "orange",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              cursor: "pointer",
+              marginTop: "10px",
+              width: "100%",
+            }}
+          >
+            🔧 Test Backend Connection
+          </button>
           {/* Live Stats */}
           <div
             style={{
