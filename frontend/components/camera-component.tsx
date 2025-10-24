@@ -159,8 +159,8 @@ export function CameraComponent({ quest, onPhotoTaken, onClose }: CameraComponen
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-      <GlassCard className="w-full max-w-md p-6">
+    <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" style={{ touchAction: 'manipulation' }}>
+      <GlassCard className="w-full max-w-md p-6" style={{ touchAction: 'manipulation' }}>
         <div className="text-center mb-4">
           <h3 className="text-xl font-bold text-foreground mb-2">
             📸 {quest.title}
@@ -175,7 +175,12 @@ export function CameraComponent({ quest, onPhotoTaken, onClose }: CameraComponen
             <p className="text-red-300 text-sm">{error}</p>
             <button
               onClick={startCamera}
-              className="mt-2 px-3 py-1 bg-red-500/20 text-red-300 rounded text-xs hover:bg-red-500/30 transition-colors"
+              onTouchEnd={(e: React.TouchEvent) => {
+                e.preventDefault();
+                startCamera();
+              }}
+              className="mt-2 px-3 py-1 bg-red-500/20 text-red-300 rounded text-xs hover:bg-red-500/30 transition-colors min-h-[44px] touch-manipulation"
+              style={{ touchAction: 'manipulation' }}
             >
               Retry Camera
             </button>
@@ -188,21 +193,31 @@ export function CameraComponent({ quest, onPhotoTaken, onClose }: CameraComponen
             <div className="flex bg-white/5 rounded-lg p-1">
               <button
                 onClick={() => setShowUpload(false)}
-                className={`flex-1 px-3 py-2 rounded text-sm transition-colors ${
+                onTouchEnd={(e: React.TouchEvent) => {
+                  e.preventDefault();
+                  setShowUpload(false);
+                }}
+                className={`flex-1 px-3 py-2 rounded text-sm transition-colors min-h-[44px] touch-manipulation ${
                   !showUpload 
                     ? 'bg-primary/80 text-white' 
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
+                style={{ touchAction: 'manipulation' }}
               >
                 📷 Camera
               </button>
               <button
                 onClick={() => setShowUpload(true)}
-                className={`flex-1 px-3 py-2 rounded text-sm transition-colors ${
+                onTouchEnd={(e: React.TouchEvent) => {
+                  e.preventDefault();
+                  setShowUpload(true);
+                }}
+                className={`flex-1 px-3 py-2 rounded text-sm transition-colors min-h-[44px] touch-manipulation ${
                   showUpload 
                     ? 'bg-primary/80 text-white' 
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
+                style={{ touchAction: 'manipulation' }}
               >
                 📁 Upload
               </button>
@@ -238,14 +253,24 @@ export function CameraComponent({ quest, onPhotoTaken, onClose }: CameraComponen
                 <div className="flex gap-3">
                   <button
                     onClick={onClose}
-                    className="flex-1 px-4 py-2 bg-gray-500/20 text-gray-300 rounded-lg hover:bg-gray-500/30 transition-colors"
+                    onTouchEnd={(e: React.TouchEvent) => {
+                      e.preventDefault();
+                      onClose();
+                    }}
+                    className="flex-1 px-4 py-2 bg-gray-500/20 text-gray-300 rounded-lg hover:bg-gray-500/30 transition-colors min-h-[44px] touch-manipulation"
+                    style={{ touchAction: 'manipulation' }}
                   >
                     Cancel
                   </button>
                   <button
                     onClick={capturePhoto}
+                    onTouchEnd={(e: React.TouchEvent) => {
+                      e.preventDefault();
+                      capturePhoto();
+                    }}
                     disabled={!isCameraReady}
-                    className="flex-1 px-4 py-2 bg-primary/80 text-white rounded-lg hover:bg-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 px-4 py-2 bg-primary/80 text-white rounded-lg hover:bg-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] touch-manipulation"
+                    style={{ touchAction: 'manipulation' }}
                   >
                     {isCameraReady ? "Capture Photo" : "Camera Loading..."}
                   </button>
@@ -268,7 +293,12 @@ export function CameraComponent({ quest, onPhotoTaken, onClose }: CameraComponen
                   />
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    className="px-4 py-2 bg-primary/80 text-white rounded-lg hover:bg-primary transition-colors"
+                    onTouchEnd={(e: React.TouchEvent) => {
+                      e.preventDefault();
+                      fileInputRef.current?.click();
+                    }}
+                    className="px-4 py-2 bg-primary/80 text-white rounded-lg hover:bg-primary transition-colors min-h-[44px] min-w-[120px] touch-manipulation"
+                    style={{ touchAction: 'manipulation' }}
                   >
                     Choose File
                   </button>
@@ -278,7 +308,12 @@ export function CameraComponent({ quest, onPhotoTaken, onClose }: CameraComponen
                 <div className="flex gap-3">
                   <button
                     onClick={onClose}
-                    className="flex-1 px-4 py-2 bg-gray-500/20 text-gray-300 rounded-lg hover:bg-gray-500/30 transition-colors"
+                    onTouchEnd={(e: React.TouchEvent) => {
+                      e.preventDefault();
+                      onClose();
+                    }}
+                    className="flex-1 px-4 py-2 bg-gray-500/20 text-gray-300 rounded-lg hover:bg-gray-500/30 transition-colors min-h-[44px] touch-manipulation"
+                    style={{ touchAction: 'manipulation' }}
                   >
                     Cancel
                   </button>
@@ -301,13 +336,23 @@ export function CameraComponent({ quest, onPhotoTaken, onClose }: CameraComponen
             <div className="flex gap-3">
               <button
                 onClick={retakePhoto}
-                className="flex-1 px-4 py-2 bg-gray-500/20 text-gray-300 rounded-lg hover:bg-gray-500/30 transition-colors"
+                onTouchEnd={(e: React.TouchEvent) => {
+                  e.preventDefault();
+                  retakePhoto();
+                }}
+                className="flex-1 px-4 py-2 bg-gray-500/20 text-gray-300 rounded-lg hover:bg-gray-500/30 transition-colors min-h-[44px] touch-manipulation"
+                style={{ touchAction: 'manipulation' }}
               >
                 Retake
               </button>
               <button
                 onClick={confirmPhoto}
-                className="flex-1 px-4 py-2 bg-green-500/80 text-white rounded-lg hover:bg-green-500 transition-colors"
+                onTouchEnd={(e: React.TouchEvent) => {
+                  e.preventDefault();
+                  confirmPhoto();
+                }}
+                className="flex-1 px-4 py-2 bg-green-500/80 text-white rounded-lg hover:bg-green-500 transition-colors min-h-[44px] touch-manipulation"
+                style={{ touchAction: 'manipulation' }}
               >
                 Use Photo
               </button>

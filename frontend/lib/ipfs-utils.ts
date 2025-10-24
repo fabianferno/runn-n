@@ -40,7 +40,7 @@ export function useUploadToIPFS() {
     setState({ isLoading: true, error: null, data: null });
 
     try {
-      const LIGHTHOUSE_API_KEY = process.env.LIGHTHOUSE_API_KEY;
+      const LIGHTHOUSE_API_KEY = process.env.NEXT_PUBLIC_LIGHTHOUSE_API_KEY || "";
       
       if (!LIGHTHOUSE_API_KEY) {
         throw new Error('Lighthouse API key not configured');

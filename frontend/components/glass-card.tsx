@@ -7,6 +7,7 @@ interface GlassCardProps {
   children: ReactNode;
   className?: string;
   onClick?: () => void;
+  onTouchEnd?: (e: React.TouchEvent) => void;
   variant?: "default" | "sm" | "interactive";
   style?: CSSProperties;
 }
@@ -15,6 +16,7 @@ export function GlassCard({
   children,
   className,
   onClick,
+  onTouchEnd,
   variant = "default",
   style,
 }: GlassCardProps) {
@@ -32,6 +34,7 @@ export function GlassCard({
     <div
       className={cn(baseStyles, variants[variant], className)}
       onClick={onClick}
+      onTouchEnd={onTouchEnd}
       style={style}
     >
       {children}

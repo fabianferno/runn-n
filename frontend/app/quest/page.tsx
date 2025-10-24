@@ -277,9 +277,13 @@ export function QuestPage() {
           {quests.map((quest, idx) => (
             <GlassCard
               key={quest.id}
-              className="p-4 cursor-pointer hover:bg-white/15 transition-all card-hover"
-              style={{ animationDelay: `${idx * 0.1}s` }}
+              className="p-4 cursor-pointer hover:bg-white/15 transition-all card-hover touch-manipulation"
+              style={{ animationDelay: `${idx * 0.1}s`, touchAction: 'manipulation' }}
               onClick={() => handleQuestClick(quest)}
+              onTouchEnd={(e: React.TouchEvent) => {
+                e.preventDefault();
+                handleQuestClick(quest);
+              }}
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
@@ -336,8 +340,8 @@ export function QuestPage() {
 
       {/* Analysis Status */}
       {isAnalyzing && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-          <GlassCard className="w-full max-w-md p-6 text-center">
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" style={{ touchAction: 'manipulation' }}>
+          <GlassCard className="w-full max-w-md p-6 text-center" style={{ touchAction: 'manipulation' }}>
             <div className="text-4xl mb-4 animate-spin">🤖</div>
             <h3 className="text-xl font-bold text-foreground mb-2">
               Analyzing Image
@@ -351,8 +355,8 @@ export function QuestPage() {
 
       {/* Analysis Error */}
       {analysisError && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-          <GlassCard className="w-full max-w-md p-6">
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" style={{ touchAction: 'manipulation' }}>
+          <GlassCard className="w-full max-w-md p-6" style={{ touchAction: 'manipulation' }}>
             <div className="text-center mb-4">
               <div className="text-4xl mb-2">❌</div>
               <h3 className="text-xl font-bold text-red-400 mb-2">
@@ -368,7 +372,13 @@ export function QuestPage() {
                   setAnalysisError(null);
                   setShowCamera(true);
                 }}
-                className="flex-1 px-4 py-2 bg-primary/80 text-white rounded-lg hover:bg-primary transition-colors"
+                onTouchEnd={(e: React.TouchEvent) => {
+                  e.preventDefault();
+                  setAnalysisError(null);
+                  setShowCamera(true);
+                }}
+                className="flex-1 px-4 py-2 bg-primary/80 text-white rounded-lg hover:bg-primary transition-colors min-h-[44px] touch-manipulation"
+                style={{ touchAction: 'manipulation' }}
               >
                 Retake Photo
               </button>
@@ -377,7 +387,13 @@ export function QuestPage() {
                   setAnalysisError(null);
                   setSelectedQuest(null);
                 }}
-                className="flex-1 px-4 py-2 bg-gray-500/20 text-gray-300 rounded-lg hover:bg-gray-500/30 transition-colors"
+                onTouchEnd={(e: React.TouchEvent) => {
+                  e.preventDefault();
+                  setAnalysisError(null);
+                  setSelectedQuest(null);
+                }}
+                className="flex-1 px-4 py-2 bg-gray-500/20 text-gray-300 rounded-lg hover:bg-gray-500/30 transition-colors min-h-[44px] touch-manipulation"
+                style={{ touchAction: 'manipulation' }}
               >
                 Cancel
               </button>
