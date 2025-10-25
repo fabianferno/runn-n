@@ -6,7 +6,7 @@ import {
 } from "../types";
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3005/api";
+  process.env.NEXT_PUBLIC_API_URL || "/api";
 
 export class ApiService {
   /**
@@ -71,6 +71,25 @@ export class ApiService {
 
     if (!response.ok) {
       throw new Error("Failed to batch update");
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Authenticate user with wallet address
+   */
+  static async authenticateUser(walletAddress: string) {
+    const response = await fetch(`${API_BASE_URL}/users/auth`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ walletAddress }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to authenticate user");
     }
 
     return response.json();
