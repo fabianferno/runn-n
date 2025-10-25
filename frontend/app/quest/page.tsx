@@ -72,10 +72,10 @@ export default function QuestPage() {
       for (const [dataCoinAddress, completions] of Object.entries(groupedCompletions)) {
         const totalAmount = completions.reduce((sum, c) => sum + (c.mintAmount || 0), 0);
         
-        console.log(`Minting ${totalAmount} tokens to ${address} for ${completions.length} completions`);
+        console.log(`Minting ${totalAmount} tokens to ${address} from ${dataCoinAddress} for ${completions.length} completions`);
         
-        // Use the ipfs-utils hook to mint
-        const result = await mintDatacoin(address, totalAmount);
+        // Use the minting hook with the correct datacoin address
+        const result = await mintDatacoin(dataCoinAddress, address, totalAmount);
         
         if (result) {
           // Mark all completions as minted
