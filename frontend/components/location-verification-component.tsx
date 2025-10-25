@@ -19,7 +19,7 @@ interface Quest {
 
 interface LocationVerificationComponentProps {
   quest: Quest;
-  onVerified: (proofs: { ipfsHash?: string; ipfsUrl?: string; fileName?: string; size?: string; questId?: string; location?: string; timestamp?: string; verified?: boolean }) => void;
+  onVerified: (proofs: any) => void;
   onClose: () => void;
 }
 
@@ -29,6 +29,7 @@ export function LocationVerificationComponent({
   onClose 
 }: LocationVerificationComponentProps) {
   const [requestUrl, setRequestUrl] = useState('');
+  const [proofs, setProofs] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [verificationStarted, setVerificationStarted] = useState(false);
@@ -63,9 +64,9 @@ export function LocationVerificationComponent({
       // Start listening for proof submissions
       await reclaimProofRequest.startSession({
         // Called when the user successfully completes the verification
-        onSuccess: async (proofs: unknown) => {
+        onSuccess: async (proofs: any) => {
           console.log('Location verification successful:', proofs);
-          const proofsData = proofs as { ipfsHash?: string; ipfsUrl?: string; fileName?: string; size?: string; questId?: string; location?: string; timestamp?: string; verified?: boolean };
+          setProofs(proofs);
           
           // Upload to IPFS if quest has photo
           if (quest.photo) {
@@ -76,7 +77,7 @@ export function LocationVerificationComponent({
               
               // Call onVerified with IPFS data
               onVerified({
-                ...proofsData,
+                ...proofs,
                 ipfsHash: ipfsResult.ipfsHash,
                 ipfsUrl: ipfsResult.ipfsUrl,
                 fileName: ipfsResult.fileName,
@@ -85,13 +86,13 @@ export function LocationVerificationComponent({
             } catch (uploadError) {
               console.error('IPFS upload failed:', uploadError);
               // Still call onVerified even if IPFS fails
-              onVerified(proofsData);
+              onVerified(proofs);
             } finally {
               setIsUploadingToIPFS(false);
             }
           } else {
             // No photo to upload, just verify
-            onVerified(proofsData);
+            onVerified(proofs);
           }
         },
         // Called if there's an error during verification
@@ -160,7 +161,7 @@ export function LocationVerificationComponent({
             📍 Verify Location
           </h3>
           <p className="text-sm text-muted-foreground">
-            Prove you&apos;re at: {quest.location}
+            Prove you're at: {quest.location}
           </p>
         </div>
 
@@ -190,7 +191,6 @@ export function LocationVerificationComponent({
             {/* Quest Photo */}
             {quest.photo && (
               <div className="relative bg-black rounded-lg overflow-hidden">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={quest.photo}
                   alt="Quest photo"
@@ -203,7 +203,7 @@ export function LocationVerificationComponent({
             <div className="p-4 bg-white/5 rounded-lg">
               <h4 className="font-semibold text-foreground mb-2">Location Verification</h4>
               <p className="text-sm text-muted-foreground mb-3">
-                Click the button below to start location verification. This will use your device&apos;s location services to prove you&apos;re at the quest location.
+                Click the button below to start location verification. This will use your device's location services to prove you're at the quest location.
               </p>
               <ul className="text-xs text-muted-foreground space-y-1">
                 <li>• Your location will be verified securely</li>

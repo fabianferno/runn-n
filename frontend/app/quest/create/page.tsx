@@ -288,7 +288,7 @@ export default function CreateQuestPage() {
       setIsCreating(false);
       isCreatingDataCoinRef.current = false;
     }
-  }, [isConnected, address, writeContract, chainId, writeError, formData, approvalHash, waitingForApproval]);
+  }, [isConnected, address, writeContract, chainId, writeError, formData]);
 
   // Parse transaction receipt to extract DataCoin address
   const parseDataCoinCreationReceipt = useCallback(async (txHash: string) => {
@@ -313,7 +313,7 @@ export default function CreateQuestPage() {
           });
 
           if (decoded.eventName === "DataCoinCreated") {
-            const eventData = decoded.args as { coinAddress: `0x${string}`; poolAddress: `0x${string}`; name: string; symbol: string; tokenURI: string; lockToken: `0x${string}`; tokensLocked: bigint };
+            const eventData = decoded.args as any;
             console.log("DataCoinCreated event found:", eventData);
             
             return {
@@ -326,7 +326,7 @@ export default function CreateQuestPage() {
               tokensLocked: eventData.tokensLocked,
             };
           }
-        } catch {
+        } catch (decodeError) {
           // Skip logs that don't match our ABI
           continue;
         }
@@ -430,7 +430,7 @@ export default function CreateQuestPage() {
       await grantMintAccess(eventData.coinAddress);
       
       // Save quest to backend with actual data
-      await saveQuestToBackend(eventData.coinAddress, eventData.poolAddress);
+      const questData = await saveQuestToBackend(eventData.coinAddress, eventData.poolAddress);
       
       setSuccess(`🎉 Quest "${formData.questName}" created successfully! 
         DataCoin: ${eventData.coinAddress}
@@ -677,7 +677,7 @@ export default function CreateQuestPage() {
                 Quest Created Successfully!
               </h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Your quest &quot;{formData.questName}&quot; has been created with a DataCoin reward system.
+                Your quest "{formData.questName}" has been created with a DataCoin reward system.
               </p>
               
               {/* DataCoin Information */}

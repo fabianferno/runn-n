@@ -55,7 +55,7 @@ export function CameraComponent({ quest, onPhotoTaken, onClose }: CameraComponen
             height: { ideal: 720 }
           }
         });
-      } catch {
+      } catch (backCameraError) {
         console.log('Back camera not available, trying default camera');
         stream = await navigator.mediaDevices.getUserMedia({
           video: { 
@@ -325,7 +325,6 @@ export function CameraComponent({ quest, onPhotoTaken, onClose }: CameraComponen
           <div className="space-y-4">
             {/* Captured Photo Preview */}
             <div className="relative bg-black rounded-lg overflow-hidden">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={capturedPhoto}
                 alt="Captured photo"

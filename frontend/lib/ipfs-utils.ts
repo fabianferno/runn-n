@@ -1,7 +1,6 @@
 import lighthouse from '@lighthouse-web3/sdk';
 import { ethers } from 'ethers';
 import { useState, useCallback } from 'react';
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const DatacoinABI = require('./abi/DataCoin');
 
 // React Hooks
@@ -37,7 +36,7 @@ export function useUploadToIPFS() {
     data: null,
   });
 
-  const uploadToIPFS = useCallback(async (imageData: string) => {
+  const uploadToIPFS = useCallback(async (imageData: string, fileName?: string) => {
     setState({ isLoading: true, error: null, data: null });
 
     try {

@@ -13,6 +13,7 @@ export function ClanCard({
   members,
   territory,
   color,
+  icon,
 }: ClanCardProps) {
   return (
     <GlassCard className="p-4 cursor-pointer hover:bg-white/15 transition-all duration-300">

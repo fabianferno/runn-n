@@ -1,6 +1,7 @@
 import React from "react";
 
 interface MapControlsProps {
+  isTracking: boolean;
   isRecording: boolean;
   onStartTracking: () => void;
   onStopTracking: () => void;
@@ -10,6 +11,7 @@ interface MapControlsProps {
 }
 
 export const MapControls: React.FC<MapControlsProps> = ({
+  isTracking,
   isRecording,
   onStartTracking,
   onStopTracking,

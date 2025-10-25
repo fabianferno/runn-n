@@ -6,6 +6,7 @@ import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagm
 import { parseUnits } from "viem";
 import { GlassCard } from "@/components/glass-card";
 import { BottomNav } from "@/components/bottom-nav";
+import { FloatingActionButton } from "@/components/floating-action-button";
 import { CameraComponent } from "@/components/camera-component";
 import { LocationVerificationComponent } from "@/components/location-verification-component";
 import { ApiService } from "@/services/api.service";
@@ -37,7 +38,7 @@ interface Quest {
   creator?: string;
 }
 
-export default function QuestPage() {
+export function QuestPage() {
   const router = useRouter();
   const { address, isConnected } = useAccount();
   const { writeContract, data: hash, isPending, error: writeError } = useWriteContract();
@@ -51,7 +52,7 @@ export default function QuestPage() {
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [completionData, setCompletionData] = useState<{completionId: string; userId: string; questId: string; mintAmount: number; dataCoinAddress: string} | null>(null);
+  const [completionData, setCompletionData] = useState<any>(null);
   const [showMintButton, setShowMintButton] = useState(false);
 
   // Fetch quests from backend
@@ -68,7 +69,7 @@ export default function QuestPage() {
 
         if (result.success && result.quests) {
                      // Transform backend quests to frontend format
-           const transformedQuests: Quest[] = result.quests.map((quest: { _id?: string; id?: string; questName: string; questDescription: string; chainName?: string; coinSymbol?: string; difficulty: string; status: string; dataCoinAddress?: string; poolAddress?: string; creator?: string }) => {
+           const transformedQuests: Quest[] = result.quests.map((quest: any) => {
              const difficultyMap: { [key: string]: "Easy" | "Medium" | "Hard" } = {
                "easy": "Easy",
                "medium": "Medium",
@@ -182,7 +183,7 @@ export default function QuestPage() {
     }
   };
 
-  const handleLocationVerified = async (proofs: {ipfsHash?: string; ipfsUrl?: string}) => {
+  const handleLocationVerified = async (proofs: any) => {
     if (selectedQuest && address) {
       try {
         // Register quest completion in backend
@@ -257,6 +258,42 @@ export default function QuestPage() {
         });
     }
   }, [isConfirmed, hash, completionData]);
+
+  const testImageAnalysis = async (imageData: string, criteria: string) => {
+    setIsAnalyzing(true);
+    setAnalysisError(null);
+    
+    try {
+      const response = await fetch('/api/analyze-image', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          imageData: imageData,
+          criteria: criteria,
+          questId: 'test',
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to analyze image');
+      }
+
+      const result = await response.json();
+      
+      if (result.success && typeof result.verified === 'boolean') {
+        alert(`Analysis Result:\n\nVerified: ${result.verified ? 'YES' : 'NO'}\n\n${result.verified ? '✅ Image meets the criteria!' : '❌ Image does not meet the criteria.'}`);
+      } else {
+        throw new Error('Invalid analysis result');
+      }
+    } catch (error) {
+      console.error('Error analyzing image:', error);
+      setAnalysisError('Failed to analyze image. Please try again.');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
@@ -581,3 +618,5 @@ export default function QuestPage() {
     </main>
   );
 }
+
+export default QuestPage;

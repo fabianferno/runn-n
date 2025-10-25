@@ -170,8 +170,8 @@ export class TerritoryGame {
       try {
         if (typeof h3.polygonToCells === "function") {
           hexagons = h3.polygonToCells(bbox, 11, true);
-        } else if (typeof (h3 as Record<string, unknown>).polyfill === "function") {
-          hexagons = ((h3 as Record<string, unknown>).polyfill as (bbox: number[][][], resolution: number, exact?: boolean) => string[])(bbox, 11, true);
+        } else if (typeof (h3 as any).polyfill === "function") {
+          hexagons = (h3 as any).polyfill(bbox, 11, true);
         } else {
           throw new Error("H3 library not properly imported");
         }
@@ -352,7 +352,7 @@ export class TerritoryGame {
   }
 
   generateGeoJSON() {
-    const features: GeoJSON.Feature[] = [];
+    const features: any[] = [];
 
     this.territories.forEach((owner, hex) => {
       let boundary;
@@ -360,8 +360,8 @@ export class TerritoryGame {
       try {
         if (typeof h3.cellToBoundary === "function") {
           boundary = h3.cellToBoundary(hex, true);
-        } else if (typeof (h3 as Record<string, unknown>).h3ToGeoBoundary === "function") {
-          boundary = ((h3 as Record<string, unknown>).h3ToGeoBoundary as (hex: string, formatAsGeoJson?: boolean) => [number, number][])(hex, true);
+        } else if (typeof (h3 as any).h3ToGeoBoundary === "function") {
+          boundary = (h3 as any).h3ToGeoBoundary(hex, true);
         } else {
           console.error("No H3 boundary function available");
           return;
@@ -685,7 +685,7 @@ export class TerritoryGame {
 
     try {
       // Get existing data
-      const existingData = (source as mapboxgl.GeoJSONSource & {_data?: { type: string; features: Array<GeoJSON.Feature> }})._data || {
+      const existingData = (source as any)._data || {
         type: "FeatureCollection",
         features: [],
       };
@@ -693,7 +693,7 @@ export class TerritoryGame {
 
       // Remove existing feature with same hex ID
       const filteredFeatures = features.filter(
-        (f: GeoJSON.Feature) => f.properties && (f.properties as { hex?: string }).hex !== hexId
+        (f: any) => f.properties?.hex !== hexId
       );
 
       // Add new feature
@@ -714,7 +714,7 @@ export class TerritoryGame {
   /**
    * Helper method to convert hex to GeoJSON feature
    */
-  private hexToFeature(hexId: string, userId: string, color: string): GeoJSON.Feature | null {
+  private hexToFeature(hexId: string, userId: string, color: string): any {
     try {
       const boundary = h3.cellToBoundary(hexId, true);
 
@@ -847,8 +847,8 @@ export class TerritoryGame {
       try {
         if (typeof h3.polygonToCells === "function") {
           hexagons = h3.polygonToCells(bbox, this.resolution, true);
-        } else if (typeof (h3 as Record<string, unknown>).polyfill === "function") {
-          hexagons = ((h3 as Record<string, unknown>).polyfill as (bbox: number[][][], resolution: number, exact?: boolean) => string[])(bbox, this.resolution, true);
+        } else if (typeof (h3 as any).polyfill === "function") {
+          hexagons = (h3 as any).polyfill(bbox, this.resolution, true);
         } else {
           throw new Error("H3 library not properly imported");
         }

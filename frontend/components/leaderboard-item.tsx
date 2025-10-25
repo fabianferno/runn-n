@@ -15,6 +15,7 @@ export function LeaderboardItem({
   name,
   score,
   territory,
+  avatar,
   isUser,
 }: LeaderboardItemProps) {
   return (

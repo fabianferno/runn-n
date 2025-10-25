@@ -322,10 +322,13 @@ export const MapComponent: React.FC<MapComponentProps> = ({
       );
 
       clearPath();
-    } catch (error: unknown) {
+    } catch (error: any) {
       console.error("Error capturing path:", error);
-      const errorMessage = error instanceof Error ? error.message : "Please try again.";
-      alert(`Failed to capture path: ${errorMessage}`);
+      console.error("Error details:", {
+        message: error.message,
+        response: error.response,
+      });
+      alert(`Failed to capture path: ${error.message || "Please try again."}`);
     }
   };
 
@@ -472,8 +475,8 @@ export const MapComponent: React.FC<MapComponentProps> = ({
                 const response = await fetch(`https://remo.crevn.xyz/health`);
                 const data = await response.json();
                 alert("Backend is accessible! " + JSON.stringify(data));
-              } catch (error: unknown) {
-                alert("Cannot reach backend: " + (error instanceof Error ? error.message : "Unknown error"));
+              } catch (error: any) {
+                alert("Cannot reach backend: " + error.message);
               }
             }}
             style={{
