@@ -1,6 +1,5 @@
 export interface User {
   _id: string;
-  username: string;
   color: string;
   stats: {
     totalHexes: number;
@@ -23,8 +22,41 @@ export interface UserStats {
 
 export interface LeaderboardEntry {
   userId: string;
-  username: string;
   color: string;
   hexCount: number;
   rank: number;
+  totalCaptures?: number;
+  largestCapture?: number;
+  regions?: number;
+  lastActive?: number;
+}
+
+export interface UserDetailedStats {
+  userId: string;
+  color: string;
+  hexCount: number;
+  totalCaptures: number;
+  largestCapture: number;
+  regions: number;
+  lastActive: number;
+  rank: number;
+}
+
+export interface RecentActivity {
+  userId: string;
+  color: string;
+  action: string;
+  hexesCaptured: number;
+  timestamp: number;
+  pathType: string;
+}
+
+export interface GameStats {
+  totalUsers: number;
+  totalHexes: number;
+  totalRegions: number;
+  totalPaths: number;
+  averageHexesPerUser: number;
+  mostActiveUser: string;
+  mostActiveRegion: string;
 }
