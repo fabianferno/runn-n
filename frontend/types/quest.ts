@@ -25,6 +25,32 @@ export interface QuestFormData {
   chainName: string;
 }
 
+// Quest interface
+export interface Quest {
+  id: string;
+  _id?: string;
+  title: string;
+  questName: string;
+  description: string;
+  questDescription: string;
+  location: string;
+  reward: string;
+  difficulty: "Easy" | "Medium" | "Hard";
+  status: "available" | "in_progress" | "completed";
+  photo?: string;
+  analysisCriteria?: string;
+  analysisResult?: {
+    verified: boolean;
+    confidence: number;
+    explanation: string;
+  };
+  ipfsHash?: string;
+  ipfsUrl?: string;
+  dataCoinAddress?: string;
+  poolAddress?: string;
+  creator?: string;
+}
+
 // Chain configuration
 export interface ChainConfig {
   factoryAddress: `0x${string}`;

@@ -48,6 +48,8 @@ export function useDataCoinCreation({ formData }: CreateQuestParams) {
 
   const isCreatingDataCoinRef = useRef(false);
   const isApprovingRef = useRef(false);
+  const isGrantingMintAccessRef = useRef(false);
+  const isSavingQuestRef = useRef(false);
 
   const { writeContract, data: hash, isPending, error: writeError } = useWriteContract();
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
@@ -112,9 +114,16 @@ export function useDataCoinCreation({ formData }: CreateQuestParams) {
 
   // Grant mint access to specified address
   const grantMintAccess = useCallback(async (dataCoinAddress: string) => {
+    // Prevent duplicate calls
+    if (isGrantingMintAccessRef.current) {
+      console.log("grantMintAccess already in progress, skipping...");
+      return;
+    }
+    
     const mintRoleAddress = "0xD9bdE6AB21D302427d6ABc3466E1fB991CAd6cFf";
     
     try {
+      isGrantingMintAccessRef.current = true;
       updateState({ creationStep: "Step 3: Granting mint access..." });
       
       await writeContract({
@@ -128,13 +137,21 @@ export function useDataCoinCreation({ formData }: CreateQuestParams) {
       });
       
       updateState({ mintAccessGranted: true });
+      isGrantingMintAccessRef.current = false;
     } catch (err) {
+      isGrantingMintAccessRef.current = false;
       throw new Error(`Failed to grant mint access: ${err instanceof Error ? err.message : "Unknown error"}`);
     }
   }, [writeContract, updateState]);
 
   // Save quest to backend
   const saveQuestToBackend = useCallback(async (dataCoinAddress: string, poolAddress?: string) => {
+    // Prevent duplicate saves
+    if (isSavingQuestRef.current) {
+      console.log("saveQuestToBackend already in progress, skipping...");
+      return null;
+    }
+    
     const questData = {
       ...formData,
       dataCoinAddress,
@@ -144,6 +161,7 @@ export function useDataCoinCreation({ formData }: CreateQuestParams) {
     };
     
     try {
+      isSavingQuestRef.current = true;
       const result = await ApiService.createQuest(questData);
       
       // Also save to localStorage as backup
@@ -157,6 +175,7 @@ export function useDataCoinCreation({ formData }: CreateQuestParams) {
       existingQuests.push(localStorageData);
       localStorage.setItem("quests", JSON.stringify(existingQuests));
       
+      isSavingQuestRef.current = false;
       return result.quest;
     } catch (error) {
       console.error("Error saving quest to backend:", error);
@@ -171,6 +190,7 @@ export function useDataCoinCreation({ formData }: CreateQuestParams) {
       existingQuests.push(localStorageData);
       localStorage.setItem("quests", JSON.stringify(existingQuests));
       
+      isSavingQuestRef.current = false;
       return localStorageData;
     }
   }, [formData, address]);
@@ -238,6 +258,12 @@ export function useDataCoinCreation({ formData }: CreateQuestParams) {
 
   // Handle DataCoin creation completion
   const handleDataCoinCreation = useCallback(async (txHash: string) => {
+    // Prevent duplicate calls
+    if (isCreatingDataCoinRef.current === false) {
+      console.log("handleDataCoinCreation already called, skipping...");
+      return;
+    }
+    
     try {
       const eventData = await parseDataCoinCreationReceipt(txHash);
       
@@ -247,7 +273,10 @@ export function useDataCoinCreation({ formData }: CreateQuestParams) {
         creationStep: "Step 2: DataCoin created! Granting mint access..." 
       });
       
+      // Grant mint access (with its own ref guard)
       await grantMintAccess(eventData.coinAddress);
+      
+      // Only save quest to backend after mint access is granted
       await saveQuestToBackend(eventData.coinAddress, eventData.poolAddress);
       
       updateState({
@@ -271,12 +300,14 @@ export function useDataCoinCreation({ formData }: CreateQuestParams) {
   const handleTransactionConfirmation = useCallback(() => {
     if (!hash) return;
 
+    // Update hashes when they're pending
     if (state.waitingForApproval && state.approvalHash === "pending") {
       updateState({ approvalHash: hash, creationStep: "Step 1: Token approval submitted! Waiting for confirmation..." });
     } else if (state.creationHash === "pending") {
       updateState({ creationHash: hash, creationStep: "Step 2: DataCoin creation submitted! Waiting for confirmation..." });
     }
     
+    // Handle confirmed transactions
     if (isConfirmed && hash) {
       if (state.waitingForApproval && (hash === state.approvalHash || state.approvalHash === "pending")) {
         updateState({ 
@@ -286,7 +317,8 @@ export function useDataCoinCreation({ formData }: CreateQuestParams) {
         });
         isApprovingRef.current = false;
         setTimeout(() => createDataCoin(), 100);
-      } else if (hash === state.creationHash) {
+      } else if (hash === state.creationHash && isCreatingDataCoinRef.current) {
+        // Only call handleDataCoinCreation if we're actually creating a DataCoin
         updateState({ creationStep: "Step 2: DataCoin created! Parsing transaction data..." });
         handleDataCoinCreation(hash);
       }

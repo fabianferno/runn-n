@@ -23,25 +23,23 @@ export function useMintDatacoin() {
     data: null,
   });
 
-  const mintDatacoin = useCallback(async (receiverAddress: string, amount: number = 1) => {
+  const mintDatacoin = useCallback(async (datacoinAddress: string, receiverAddress: string, amount: number = 1) => {
     setState({ isLoading: true, error: null, data: null });
 
     try {
       const PRIVATE_KEY = process.env.NEXT_PUBLIC_PRIVATE_KEY;
-      const DATACOIN_ADDRESS = process.env.NEXT_PUBLIC_DATACOIN_ADDRESS || "";
+
       
       if (!PRIVATE_KEY) {
         throw new Error('Private key not configured');
       }
 
-      if (!DATACOIN_ADDRESS) {
-        throw new Error('Datacoin address not configured');
-      }
+
 
       const provider = new ethers.JsonRpcProvider("https://1rpc.io/sepolia");
       const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
       const datacoinContract = new ethers.Contract(
-        DATACOIN_ADDRESS,
+        datacoinAddress,
         DatacoinABI,
         wallet
       );
