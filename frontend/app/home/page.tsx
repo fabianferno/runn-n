@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { GlassCard } from "@/components/glass-card";
 import { StatCard } from "@/components/stat-card";
 import { FloatingActionButton } from "@/components/floating-action-button";
@@ -9,14 +9,35 @@ import { MapComponent } from "@/components/map-component";
 import ConnectButton from "@/components/connectButton";
 import { useWalletClient } from "wagmi";
 import ConnectionStatus from "@/components/nitrolite/ConnectionStatus";
+import { useUserAuthentication } from "@/hooks/useUserAuthentication";
+import { TerritoryGame } from "@/lib/territory-game";
 
 function HomePage() {
   const [isCapturing, setIsCapturing] = useState(false);
   const { data: walletClient } = useWalletClient();
+  const { user, isAuthenticating, walletAddress } = useUserAuthentication();
+  const territoryGameRef = useRef<TerritoryGame | null>(null);
+
   const handleStartCapture = () => {
     setIsCapturing(true);
     setTimeout(() => setIsCapturing(false), 2000);
   };
+
+  // Update TerritoryGame when user authenticates
+  useEffect(() => {
+    if (user && territoryGameRef.current) {
+      // Add the user as a player in the territory game
+      territoryGameRef.current.addPlayer(user._id, {
+        color: user.color,
+        name: `User ${user._id.slice(0, 6)}...`,
+      });
+      
+      // Set as current user
+      territoryGameRef.current.setCurrentUser(user._id);
+      
+      console.log("User added to territory game:", user);
+    }
+  }, [user]);
 
   useEffect(
     () => {
@@ -75,6 +96,20 @@ function HomePage() {
               }}
               onLocationFound={(lng, lat) => {
                 console.log("Current location found:", { lng, lat });
+              }}
+              onTerritoryGameReady={(game) => {
+                console.log("Territory game ready:", game);
+                territoryGameRef.current = game;
+                
+                // If user is already authenticated, add them to the game
+                if (user) {
+                  game.addPlayer(user._id, {
+                    color: user.color,
+                    name: `User ${user._id.slice(0, 6)}...`,
+                  });
+                  game.setCurrentUser(user._id);
+                  console.log("User added to territory game:", user);
+                }
               }}
             />
           </div>
