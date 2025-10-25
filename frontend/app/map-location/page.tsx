@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 
 export default function MapLocationPage() {
   const [currentLocation, setCurrentLocation] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [responseData, setResponseData] = useState<any>(null);
+  const [responseData, setResponseData] = useState<{latitude: number; longitude: number; timestamp?: string} | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -185,6 +185,7 @@ export default function MapLocationPage() {
                 },
                 (err) => {
                   setError('Failed to get location');
+                  console.error(err);
                 }
               );
             }}

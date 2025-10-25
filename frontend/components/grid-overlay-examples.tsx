@@ -50,7 +50,7 @@ export function FullFeaturedGridExample() {
       hideBuildingLabels={true}
       hidePoiLabels={true}
       showCoordinates={true}
-      onMapLoad={(map) => {
+      onMapLoad={() => {
         console.log("Map with grid overlay loaded");
       }}
       onLocationFound={(lng, lat) => {
