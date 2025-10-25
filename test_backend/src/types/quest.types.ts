@@ -56,3 +56,4 @@ export interface QuestListResponse {
   total?: number;
   error?: string;
 }
+

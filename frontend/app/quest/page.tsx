@@ -562,8 +562,50 @@ export function QuestPage() {
         />
       )}
 
-      {/* Test Component */}
-     
+      {/* Mint Button */}
+      {showMintButton && completionData && (
+        <div className="fixed bottom-28 left-0 right-0 px-4 z-40">
+          <GlassCard className="p-4 mb-4 border-green-500/30">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3 className="font-semibold text-foreground">Ready to Mint!</h3>
+                <p className="text-sm text-muted-foreground">
+                  {completionData.mintAmount} tokens are ready
+                </p>
+              </div>
+              <div className="text-2xl">🎁</div>
+            </div>
+            <button
+              onClick={handleMintNow}
+              disabled={!isConnected || isPending || isConfirming}
+              className="w-full px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+            >
+              {!isConnected
+                ? "Connect Wallet"
+                : isPending
+                ? "Confirming..."
+                : isConfirming
+                ? "Minting..."
+                : "Mint Now"}
+            </button>
+            {isPending && (
+              <p className="text-xs text-center text-muted-foreground mt-2">
+                Please confirm the transaction in your wallet
+              </p>
+            )}
+            {isConfirming && (
+              <p className="text-xs text-center text-blue-300 mt-2">
+                Transaction confirming on blockchain...
+              </p>
+            )}
+            {writeError && (
+              <p className="text-xs text-center text-red-400 mt-2">
+                Error: {writeError.message}
+              </p>
+            )}
+          </GlassCard>
+        </div>
+      )}
 
       <BottomNav
         items={[

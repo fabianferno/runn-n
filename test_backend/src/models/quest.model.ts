@@ -80,3 +80,4 @@ QuestSchema.index({ status: 1, createdAt: -1 });
 QuestSchema.index({ difficulty: 1 });
 
 export const QuestModel = mongoose.model<IQuest>("Quest", QuestSchema);
+

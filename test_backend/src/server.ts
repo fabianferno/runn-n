@@ -47,6 +47,7 @@ app.get("/health", (req, res) => {
 app.use("/api/territories", territoriesRoutes);
 app.use("/api/users", usersRoutes);
 app.use("/api/quests", questsRoutes);
+app.use("/api/quest-completions", questCompletionsRoutes);
 
 // Error handler
 app.use(errorHandler);
