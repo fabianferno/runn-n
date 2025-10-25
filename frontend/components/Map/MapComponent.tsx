@@ -318,19 +318,25 @@ export const MapComponent: React.FC<MapComponentProps> = ({
     const result = await stopRecording();
     stopTracking();
 
+    // Show stats even if path is short
     if (result.matchedPath.length < 2) {
-      alert("Path too short to capture territories");
+      alert(
+        `Session complete!\n` +
+          `Hexes captured: ${realtimeHexes.size}\n` +
+          `Distance: ${(distance / 1000).toFixed(2)} km`
+      );
       clearPath();
       setRealtimeHexes(new Set());
       return;
     }
 
+    // Optional: Try to fill loops for bonus hexes
     try {
       const pathCoordinates: [number, number][] = result.matchedPath.map(
         (coord) => [coord[1], coord[0]]
       );
 
-      console.log("Sending final path to backend:", {
+      console.log("Checking for loop fill bonus:", {
         pathLength: pathCoordinates.length,
         realtimeHexesCaptured: realtimeHexes.size,
       });
@@ -341,25 +347,45 @@ export const MapComponent: React.FC<MapComponentProps> = ({
         path: pathCoordinates,
       });
 
-      console.log("Capture response:", response);
+      console.log("Loop fill response:", response);
 
-      // Update total count (accounting for hexes already captured in real-time)
-      const newHexes = response.hexesCaptured - realtimeHexes.size;
-      setCapturedHexes((prev) => prev + Math.max(0, newHexes));
+      // If it was a loop, we got bonus interior hexes
+      if (response.pathType === "closed_loop" && response.interiorHexes > 0) {
+        // Fill the interior hexes on map
+        response.hexPath.forEach((hexId) => {
+          gameRef.current?.setTerritory(hexId, userId, userColor);
+        });
 
-      alert(
-        `Session complete!\n` +
-          `Real-time hexes: ${realtimeHexes.size}\n` +
-          `Path fill hexes: ${response.hexesCaptured}\n` +
-          `Total new: ${response.hexesCaptured}\n` +
-          `Distance: ${(distance / 1000).toFixed(2)} km`
-      );
+        alert(
+          `🎉 LOOP BONUS!\n` +
+            `Hexes while running: ${realtimeHexes.size}\n` +
+            `Loop interior fill: ${response.interiorHexes}\n` +
+            `Total captured: ${response.hexesCaptured}\n` +
+            `Distance: ${(distance / 1000).toFixed(2)} km`
+        );
+
+        setCapturedHexes((prev) => prev + response.interiorHexes);
+      } else {
+        // Just a line, no bonus
+        alert(
+          `Session complete!\n` +
+            `Hexes captured: ${realtimeHexes.size}\n` +
+            `Distance: ${(distance / 1000).toFixed(2)} km`
+        );
+      }
 
       clearPath();
       setRealtimeHexes(new Set());
     } catch (error: any) {
-      console.error("Error capturing path:", error);
-      alert(`Failed to capture path: ${error.message || "Please try again."}`);
+      console.error("Error checking loop bonus:", error);
+      // Still successful - just no bonus
+      alert(
+        `Session complete!\n` +
+          `Hexes captured: ${realtimeHexes.size}\n` +
+          `Distance: ${(distance / 1000).toFixed(2)} km`
+      );
+      clearPath();
+      setRealtimeHexes(new Set());
     }
   };
 
@@ -406,19 +432,24 @@ export const MapComponent: React.FC<MapComponentProps> = ({
   return (
     <div style={{ padding: "20px", maxWidth: "1200px", margin: "0 auto" }}>
       {/* Map Container */}
-      <div
-        style={{
-          width: "100%",
-          height: "600px",
-          borderRadius: "12px",
-          overflow: "hidden",
-          marginBottom: "30px",
-          boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
-        }}
-      >
-        <div ref={mapContainerRef} style={{ width: "100%", height: "100%" }} />
+      <div className="px-4 py-6 animate-scale-in">
+        <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-white/20"></div>
+        <div
+          style={{
+            width: "100%",
+            height: "600px",
+            borderRadius: "12px",
+            overflow: "hidden",
+            marginBottom: "30px",
+            boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
+          }}
+        >
+          <div
+            ref={mapContainerRef}
+            style={{ width: "100%", height: "100%" }}
+          />
+        </div>
       </div>
-
       {/* Controls Section */}
       <div
         style={{
