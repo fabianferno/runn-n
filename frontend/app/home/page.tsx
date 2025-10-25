@@ -1,20 +1,34 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { GlassCard } from "@/components/glass-card";
 import { StatCard } from "@/components/stat-card";
 import { FloatingActionButton } from "@/components/floating-action-button";
 import { BottomNav } from "@/components/bottom-nav";
 import { MapComponent } from "@/components/map-component";
 import ConnectButton from "@/components/connectButton";
+import { useWalletClient } from "wagmi";
+import ConnectionStatus from "@/components/nitrolite/ConnectionStatus";
 
 function HomePage() {
   const [isCapturing, setIsCapturing] = useState(false);
-
+  const { data: walletClient } = useWalletClient();
   const handleStartCapture = () => {
     setIsCapturing(true);
     setTimeout(() => setIsCapturing(false), 2000);
   };
+
+  useEffect(
+    () => {
+      if (walletClient) {
+        console.log("Wallet client:", walletClient);
+        walletClient.requestAddresses().then((addresses) => {
+          console.log("Addresses:", addresses);
+        });
+      }
+    },
+    [walletClient]
+  )
 
   return (
     <main className="min-h-screen bg-background pb-24">
@@ -25,9 +39,14 @@ function HomePage() {
             <p className="text-sm text-muted-foreground">
               Capture • Compete • Conquer
             </p>
+
           </div>
           <div className="w-10 h-10 rounded-full bg-primary animate-subtle-bounce" />
+
           <ConnectButton />
+        </div>
+        <div>
+          <ConnectionStatus />
         </div>
         <div className="px-4 py-6 animate-scale-in">
           <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-white/20">
@@ -172,11 +191,10 @@ function HomePage() {
               style={{ animationDelay: `${idx * 0.15}s` }}
             >
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
-                  item.icon === "+"
-                    ? "bg-green-500/20 text-green-400"
-                    : "bg-red-500/20 text-red-400"
-                }`}
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${item.icon === "+"
+                  ? "bg-green-500/20 text-green-400"
+                  : "bg-red-500/20 text-red-400"
+                  }`}
               >
                 {item.icon}
               </div>
