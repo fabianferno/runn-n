@@ -1,4 +1,5 @@
-// filepath: src/lib/websocket.ts
+import { parseAnyRPCResponse } from "@erc7824/nitrolite";
+
 export type WsStatus = "Connecting" | "Connected" | "Disconnected";
 
 type StatusListener = (status: WsStatus) => void;
@@ -41,7 +42,6 @@ class WebSocketService {
   }
 
   public send(payload: string) {
-    console.log("Sending payload:", payload);
     if (this.socket?.readyState === WebSocket.OPEN) this.socket.send(payload);
     else this.messageQueue.push(payload);
   }

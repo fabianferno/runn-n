@@ -8,9 +8,9 @@ import { BottomNav } from "@/components/bottom-nav";
 import { MapComponent } from "@/components/map-component";
 import ConnectButton from "@/components/connectButton";
 import { useWalletClient } from "wagmi";
-import ConnectionStatus from "@/components/nitrolite/ConnectionStatus";
 import { useUserAuthentication } from "@/hooks/useUserAuthentication";
 import { TerritoryGame } from "@/lib/territory-game";
+import NitroliteStatus from "@/components/nitrolite/NitroliteStatus";
 
 function HomePage() {
   const [isCapturing, setIsCapturing] = useState(false);
@@ -67,7 +67,7 @@ function HomePage() {
           <ConnectButton />
         </div>
         <div>
-          <ConnectionStatus />
+          <NitroliteStatus />
         </div>
         <div className="px-4 py-6 animate-scale-in">
           <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-white/20">
