@@ -1,6 +1,7 @@
 export * from "./region.types";
 export * from "./user.types";
 export * from "./path.types";
+export * from "./quest.types";
 
 export interface ApiResponse<T> {
   success: boolean;

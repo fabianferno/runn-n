@@ -1,19 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { parseUnits } from "viem";
 import { GlassCard } from "@/components/glass-card";
 import { BottomNav } from "@/components/bottom-nav";
 import { FloatingActionButton } from "@/components/floating-action-button";
 import { CameraComponent } from "@/components/camera-component";
 import { LocationVerificationComponent } from "@/components/location-verification-component";
-
-
+import { ApiService } from "@/services/api.service";
+// @ts-expect-error - ABI files are CommonJS modules
+import DataCoinABI from "@/lib/abi/DataCoin";
 
 interface Quest {
   id: string;
+  _id?: string;
   title: string;
+  questName: string;
   description: string;
+  questDescription: string;
   location: string;
   reward: string;
   difficulty: "Easy" | "Medium" | "Hard";
@@ -27,70 +33,93 @@ interface Quest {
   };
   ipfsHash?: string;
   ipfsUrl?: string;
+  dataCoinAddress?: string;
+  poolAddress?: string;
+  creator?: string;
 }
 
 export function QuestPage() {
   const router = useRouter();
+  const { address, isConnected } = useAccount();
+  const { writeContract, data: hash, isPending, error: writeError } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
+  
+  const [quests, setQuests] = useState<Quest[]>([]);
   const [selectedQuest, setSelectedQuest] = useState<Quest | null>(null);
   const [showCamera, setShowCamera] = useState(false);
   const [showLocationVerification, setShowLocationVerification] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [completionData, setCompletionData] = useState<any>(null);
+  const [showMintButton, setShowMintButton] = useState(false);
 
+  // Fetch quests from backend
+  useEffect(() => {
+    const fetchQuests = async () => {
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        const result = await ApiService.getAllQuests({
+          status: "active",
+          limit: 100
+        });
 
+        if (result.success && result.quests) {
+                     // Transform backend quests to frontend format
+           const transformedQuests: Quest[] = result.quests.map((quest: any) => {
+             const difficultyMap: { [key: string]: "Easy" | "Medium" | "Hard" } = {
+               "easy": "Easy",
+               "medium": "Medium",
+               "hard": "Hard",
+               "Easy": "Easy",
+               "Medium": "Medium",
+               "Hard": "Hard",
+               "expert": "Hard"
+             };
+             
+             const statusMap: { [key: string]: "available" | "in_progress" | "completed" } = {
+               "active": "available",
+               "available": "available",
+               "in_progress": "in_progress",
+               "completed": "completed",
+               "cancelled": "completed"
+             };
 
-  const quests: Quest[] = [
-    {
-      id: "1",
-      title: "Capture the  Potholes",
-      description: "Take a photo of a pothhole and prove your location",
-      location: "Golden Gate Bridge, San Francisco",
-      reward: "500 XP + Rare Badge",
-      difficulty: "Medium",
-      status: "available",
-      analysisCriteria: "Does the image show the pothp in a road. ",
-    },
-    {
-      id: "2", 
-      title: "Urban Explorer",
-      description: "Find and photograph a street art mural in downtown",
-      location: "Downtown District",
-      reward: "300 XP + Explorer Badge",
-      difficulty: "Easy",
-      status: "available",
-      analysisCriteria: "Does the image contain colorful street art or graffiti on a wall or building?",
-    },
-    {
-      id: "3",
-      title: "Mountain Peak Challenge",
-      description: "Reach the summit and capture the breathtaking view",
-      location: "Mount Davidson Peak",
-      reward: "800 XP + Peak Conqueror Badge",
-      difficulty: "Hard",
-      status: "available",
-      analysisCriteria: "Does the image show a mountain peak or elevated viewpoint with a panoramic landscape view?",
-    },
-    {
-      id: "4",
-      title: "Waterfront Warrior",
-      description: "Visit the waterfront and document your adventure",
-      location: "Embarcadero Waterfront",
-      reward: "400 XP + Water Badge",
-      difficulty: "Easy",
-      status: "available",
-      analysisCriteria: "Does the image show water (ocean, bay, or large body of water) with waterfront features like piers, docks, or shoreline?",
-    },
-    {
-      id: "5",
-      title: "Tech Hub Discovery",
-      description: "Explore the heart of Silicon Valley and capture the innovation",
-      location: "Silicon Valley Tech Hub",
-      reward: "600 XP + Innovation Badge",
-      difficulty: "Medium",
-      status: "available",
-      analysisCriteria: "Does the image show modern office buildings, tech company logos, or Silicon Valley landmarks?",
-    },
-  ];
+                           return {
+                id: quest._id || quest.id,
+                _id: quest._id,
+                title: quest.questName,
+                questName: quest.questName,
+                description: quest.questDescription,
+                questDescription: quest.questDescription,
+                location: `${quest.chainName || 'Unknown'} Network`,
+                reward: `${quest.coinSymbol || 'Tokens'}`,
+                difficulty: difficultyMap[quest.difficulty] || "Medium",
+                status: statusMap[quest.status] || "available",
+                analysisCriteria: quest.questDescription,
+                dataCoinAddress: quest.dataCoinAddress,
+                poolAddress: quest.poolAddress,
+                creator: quest.creator,
+              } as Quest;
+            });
+          
+          setQuests(transformedQuests);
+        } else {
+          setError("Failed to fetch quests");
+        }
+      } catch (err) {
+        console.error("Error fetching quests:", err);
+        setError("Failed to load quests. Please try again.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchQuests();
+  }, []);
 
   const handleQuestClick = (quest: Quest) => {
     setSelectedQuest(quest);
@@ -155,28 +184,80 @@ export function QuestPage() {
   };
 
   const handleLocationVerified = async (proofs: any) => {
-    if (selectedQuest) {
-      // Update quest status to completed with IPFS data (if available)
-      const updatedQuest = { 
-        ...selectedQuest, 
-        status: "completed" as const,
-        ipfsHash: proofs.ipfsHash,
-        ipfsUrl: proofs.ipfsUrl
-      };
-      setSelectedQuest(updatedQuest);
-      setShowLocationVerification(false);
-      setSelectedQuest(null);
-      
-      // Show success message
-      let successMessage = `Quest completed!`;
-      
-      if (proofs.ipfsHash) {
-        successMessage += `\n\nImage stored on IPFS:\nHash: ${proofs.ipfsHash}\nURL: ${proofs.ipfsUrl}`;
+    if (selectedQuest && address) {
+      try {
+        // Register quest completion in backend
+        const completionResponse = await ApiService.registerQuestCompletion(
+          selectedQuest.id,
+          address
+        );
+
+        if (completionResponse.success) {
+          console.log('Quest completion registered:', completionResponse.completionId);
+          
+          // Store completion data for minting
+          setCompletionData(completionResponse.data);
+          setShowMintButton(true);
+          
+          // Update quest status
+          const updatedQuest = { 
+            ...selectedQuest, 
+            status: "completed" as const,
+            ipfsHash: proofs.ipfsHash,
+            ipfsUrl: proofs.ipfsUrl
+          };
+          setSelectedQuest(updatedQuest);
+          setShowLocationVerification(false);
+          
+          alert(`Quest completed! You can now mint your reward.`);
+        } else {
+          alert(`Error: ${completionResponse.error}`);
+        }
+      } catch (error) {
+        console.error('Error registering completion:', error);
+        alert('Failed to register completion. Please try again.');
       }
-      
-      alert(successMessage);
     }
   };
+
+  const handleMintNow = async () => {
+    if (!completionData || !address || !isConnected) {
+      alert('Please connect your wallet first');
+      return;
+    }
+
+    try {
+      // Call mint function on DataCoin contract
+      const mintAmount = parseUnits(completionData.mintAmount.toString(), 18);
+      
+      await writeContract({
+        address: completionData.dataCoinAddress as `0x${string}`,
+        abi: DataCoinABI,
+        functionName: "mint",
+        args: [address, mintAmount],
+      });
+    } catch (error) {
+      console.error('Error initiating mint:', error);
+      alert('Failed to initiate mint. Please try again.');
+    }
+  };
+
+  // Handle mint transaction confirmation
+  useEffect(() => {
+    if (isConfirmed && hash && completionData) {
+      // Mark completion as minted in backend
+      ApiService.markCompletionAsMinted(completionData.completionId || '', hash as string)
+        .then(() => {
+          console.log('Completion marked as minted');
+          setShowMintButton(false);
+          setCompletionData(null);
+          alert('Tokens minted successfully! 🎉');
+        })
+        .catch((error) => {
+          console.error('Error marking as minted:', error);
+        });
+    }
+  }, [isConfirmed, hash, completionData]);
 
   const testImageAnalysis = async (imageData: string, criteria: string) => {
     setIsAnalyzing(true);
@@ -256,15 +337,19 @@ export function QuestPage() {
         {/* Quest Stats */}
         <div className="grid grid-cols-3 gap-2 mb-6">
           <GlassCard className="p-3 text-center">
-            <div className="text-lg font-bold text-primary">5</div>
+            <div className="text-lg font-bold text-primary">{quests.length}</div>
             <div className="text-xs text-muted-foreground">Total Quests</div>
           </GlassCard>
           <GlassCard className="p-3 text-center">
-            <div className="text-lg font-bold text-orange-400">0</div>
+            <div className="text-lg font-bold text-orange-400">
+              {quests.filter(q => q.status === "in_progress").length}
+            </div>
             <div className="text-xs text-muted-foreground">In Progress</div>
           </GlassCard>
           <GlassCard className="p-3 text-center">
-            <div className="text-lg font-bold text-green-400">0</div>
+            <div className="text-lg font-bold text-green-400">
+              {quests.filter(q => q.status === "completed").length}
+            </div>
             <div className="text-xs text-muted-foreground">Completed</div>
           </GlassCard>
         </div>
@@ -287,10 +372,56 @@ export function QuestPage() {
           </div>
         </GlassCard>
 
+        {/* Loading State */}
+        {isLoading && (
+          <GlassCard className="p-6 text-center mb-6">
+            <div className="text-4xl mb-4 animate-spin">⏳</div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              Loading Quests
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Fetching quests from the backend...
+            </p>
+          </GlassCard>
+        )}
+
+        {/* Error State */}
+        {error && !isLoading && (
+          <GlassCard className="p-6 text-center mb-6 border-red-500/20">
+            <div className="text-4xl mb-2">⚠️</div>
+            <h3 className="text-lg font-semibold text-red-400 mb-2">
+              Error Loading Quests
+            </h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              {error}
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-primary/80 text-white rounded-lg hover:bg-primary transition-colors"
+            >
+              Retry
+            </button>
+          </GlassCard>
+        )}
+
+        {/* Empty State */}
+        {!isLoading && !error && quests.length === 0 && (
+          <GlassCard className="p-6 text-center mb-6">
+            <div className="text-4xl mb-2">🔍</div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              No Quests Available
+            </h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              No quests found in the backend. Create your first quest!
+            </p>
+          </GlassCard>
+        )}
+
         {/* Quests List */}
-        <div className="space-y-3">
-          <h2 className="text-lg font-bold text-foreground mb-3">Available Quests</h2>
-          {quests.map((quest, idx) => (
+        {!isLoading && !error && quests.length > 0 && (
+          <div className="space-y-3">
+            <h2 className="text-lg font-bold text-foreground mb-3">Available Quests</h2>
+            {quests.map((quest, idx) => (
             <GlassCard
               key={quest.id}
               className="p-4 cursor-pointer hover:bg-white/15 transition-all card-hover touch-manipulation"
@@ -335,8 +466,9 @@ export function QuestPage() {
                 </div>
               </div>
             </GlassCard>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
   

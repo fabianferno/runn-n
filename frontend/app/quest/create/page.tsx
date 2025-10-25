@@ -5,6 +5,7 @@ import { GlassCard } from "@/components/glass-card";
 import { BottomNav } from "@/components/bottom-nav";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useChainId, usePublicClient } from "wagmi";
 import { keccak256, toBytes, decodeEventLog } from "viem";
+import { ApiService } from "@/services/api.service";
 
 // @ts-expect-error - ABI files are CommonJS modules
 import DataCoinFactoryABI from "@/lib/abi/DataCoinFactory";
@@ -366,28 +367,50 @@ export default function CreateQuestPage() {
     }
   }, [writeContract]);
 
-  // Save quest to localStorage
-  const saveQuestToStorage = useCallback((dataCoinAddress: string) => {
+  // Save quest to backend
+  const saveQuestToBackend = useCallback(async (dataCoinAddress: string, poolAddress?: string) => {
     const questData = {
-      id: Date.now().toString(),
       ...formData,
       dataCoinAddress,
+      poolAddress,
       creator: address,
-      createdAt: new Date().toISOString(),
       status: "active"
     };
     
-    // Get existing quests
-    const existingQuests = JSON.parse(localStorage.getItem("quests") || "[]");
-    
-    // Add new quest
-    existingQuests.push(questData);
-    
-    // Save back to localStorage
-    localStorage.setItem("quests", JSON.stringify(existingQuests));
-    
-    console.log("Quest saved to storage:", questData);
-    return questData;
+    try {
+      console.log("Saving quest to backend:", questData);
+      const result = await ApiService.createQuest(questData);
+      console.log("Quest saved to backend:", result);
+      
+      // Also save to localStorage as backup
+      const localStorageData = {
+        id: result.quest?._id || Date.now().toString(),
+        ...questData,
+        createdAt: new Date().toISOString(),
+      };
+      
+      const existingQuests = JSON.parse(localStorage.getItem("quests") || "[]");
+      existingQuests.push(localStorageData);
+      localStorage.setItem("quests", JSON.stringify(existingQuests));
+      
+      return result.quest;
+    } catch (error) {
+      console.error("Error saving quest to backend:", error);
+      
+      // Fallback to localStorage
+      const localStorageData = {
+        id: Date.now().toString(),
+        ...questData,
+        createdAt: new Date().toISOString(),
+      };
+      
+      const existingQuests = JSON.parse(localStorage.getItem("quests") || "[]");
+      existingQuests.push(localStorageData);
+      localStorage.setItem("quests", JSON.stringify(existingQuests));
+      
+      console.log("Quest saved to localStorage as fallback:", localStorageData);
+      return localStorageData;
+    }
   }, [formData, address]);
 
   // Handle DataCoin creation completion
@@ -406,8 +429,8 @@ export default function CreateQuestPage() {
       // Grant mint access to the mint role address
       await grantMintAccess(eventData.coinAddress);
       
-      // Save quest to localStorage with actual data
-      const questData = saveQuestToStorage(eventData.coinAddress);
+      // Save quest to backend with actual data
+      const questData = await saveQuestToBackend(eventData.coinAddress, eventData.poolAddress);
       
       setSuccess(`🎉 Quest "${formData.questName}" created successfully! 
         DataCoin: ${eventData.coinAddress}
@@ -423,7 +446,7 @@ export default function CreateQuestPage() {
       setIsCreating(false);
       isCreatingDataCoinRef.current = false;
     }
-  }, [parseDataCoinCreationReceipt, grantMintAccess, saveQuestToStorage, formData.questName]);
+  }, [parseDataCoinCreationReceipt, grantMintAccess, saveQuestToBackend, formData.questName]);
 
   // Handle transaction confirmation
   useEffect(() => {

@@ -6,6 +6,8 @@ import dotenv from "dotenv";
 
 import territoriesRoutes from "./routes/territories.routes";
 import usersRoutes from "./routes/users.routes";
+import questsRoutes from "./routes/quests.routes";
+import questCompletionsRoutes from "./routes/quest-completions.routes";
 import { SocketHandler } from "./websocket/socket.handler";
 import { errorHandler } from "./middleware/error.middleware";
 import { connectDatabase } from "./config/database";
@@ -44,6 +46,7 @@ app.get("/health", (req, res) => {
 // Routes
 app.use("/api/territories", territoriesRoutes);
 app.use("/api/users", usersRoutes);
+app.use("/api/quests", questsRoutes);
 
 // Error handler
 app.use(errorHandler);
