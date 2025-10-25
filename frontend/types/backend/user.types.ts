@@ -60,3 +60,4 @@ export interface GameStats {
   mostActiveUser: string;
   mostActiveRegion: string;
 }
+

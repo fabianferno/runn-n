@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "populate": "ts-node src/scripts/populate-chennai-data.ts"
   },
   "dependencies": {
     "cors": "^2.8.5",
