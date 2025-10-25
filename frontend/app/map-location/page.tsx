@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 
 export default function MapLocationPage() {
   const [currentLocation, setCurrentLocation] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -8,85 +8,67 @@ export default function MapLocationPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Make sendLocationToAPI available outside useEffect
-  const sendLocationToAPI = useCallback(async (loc: { latitude: number; longitude: number }) => {
-    // Store display location
-    setCurrentLocation(loc);
+  // Function to get user location and send to httpbin
+  const getAndSendLocation = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     
     try {
-      // Format location data to 6 decimal places (GPS precision)
-      const locationData = {
-        latitude: parseFloat(Number(loc.latitude).toFixed(6)),
-        longitude: parseFloat(Number(loc.longitude).toFixed(6)),
-      };
-
-      console.log('=== SENDING LOCATION DATA ===');
-      console.log('Original location:', loc);
-      console.log('Formatted location data:', locationData);
-      console.log('Type of latitude:', typeof locationData.latitude);
-      console.log('Type of longitude:', typeof locationData.longitude);
-      console.log('JSON:', JSON.stringify(locationData));
-
-      const response = await fetch('/api/echo-location', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(locationData),
-      });
-
-      console.log('Response status:', response.status);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('API error response:', errorText);
-        setError(`API error: ${response.status} - ${errorText}`);
-        return;
-      }
-
-      const data = await response.json();
-      console.log('✅ API Response:', data);
-      setResponseData(data);
-    } catch (err) {
-      console.error('❌ Failed to send location data:', err);
-      setError(`Failed to send location data: ${err instanceof Error ? err.message : 'Unknown error'}`);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    // Auto-fetch location on page load
-    const getCurrentLocation = async () => {
       if (!navigator.geolocation) {
-        setError('Geolocation is not supported by your browser');
-        setLoading(false);
-        return;
+        throw new Error('Geolocation is not supported by your browser');
       }
-
-      setLoading(true);
-      setError(null);
-
+      
+      console.log('=== GETTING USER LOCATION ===');
+      
       navigator.geolocation.getCurrentPosition(
         async (position) => {
-          const loc = {
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-          };
-          await sendLocationToAPI(loc);
+          const latitude = position.coords.latitude;
+          const longitude = position.coords.longitude;
+          
+          console.log('User location:', { latitude, longitude });
+          
+          // Set current location for display
+          setCurrentLocation({ latitude, longitude });
+          
+          try {
+            console.log('=== SENDING TO HTTPBIN ===');
+            
+            // Send location to httpbin as query parameters
+            const httpbinUrl = `https://httpbin.org/get?lat=${latitude}&lon=${longitude}`;
+            const response = await fetch(httpbinUrl);
+            
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            console.log('✅ Httpbin Response:', data);
+            
+            // Set response data with latitude and longitude
+            setResponseData({
+              latitude: latitude,
+              longitude: longitude,
+              httpbinResponse: data,
+            });
+          } catch (fetchErr) {
+            console.error('❌ Failed to send to httpbin:', fetchErr);
+            setError(`Failed to send to httpbin: ${fetchErr instanceof Error ? fetchErr.message : 'Unknown error'}`);
+          } finally {
+            setLoading(false);
+          }
         },
         (err) => {
           let errorMessage = 'Failed to get location: ';
           
           switch (err.code) {
             case err.PERMISSION_DENIED:
-              errorMessage += 'Permission denied';
+              errorMessage += 'Permission denied by user';
               break;
             case err.POSITION_UNAVAILABLE:
-              errorMessage += 'Position unavailable';
+              errorMessage += 'Position information unavailable';
               break;
             case err.TIMEOUT:
-              errorMessage += 'Timeout';
+              errorMessage += 'Location request timeout';
               break;
             default:
               errorMessage += err.message;
@@ -97,15 +79,24 @@ export default function MapLocationPage() {
           setLoading(false);
         },
         {
-          enableHighAccuracy: false,
+          enableHighAccuracy: true,
           timeout: 10000,
-          maximumAge: 60000
+          maximumAge: 0,
         }
       );
-    };
+    } catch (err) {
+      console.error('❌ Failed to get location:', err);
+      setError(`Failed to get location: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      setLoading(false);
+    }
+  }, []);
 
-    getCurrentLocation();
-  }, [sendLocationToAPI]);
+  // Auto-fetch location on page load
+  useEffect(() => {
+    getAndSendLocation();
+  }, [getAndSendLocation]);
+
+
 
   return (
     <div className="min-h-screen bg-background p-8">
@@ -158,8 +149,8 @@ export default function MapLocationPage() {
               </h2>
               <div className="bg-white/10 rounded p-3">
                 <div className="text-sm text-muted-foreground">
-                  <div>Latitude: <span className="text-foreground">{responseData.latitude}</span></div>
-                  <div>Longitude: <span className="text-foreground">{responseData.longitude}</span></div>
+                  <div>Latitude: <span className="text-foreground font-mono">{responseData.latitude}</span></div>
+                  <div>Longitude: <span className="text-foreground font-mono">{responseData.longitude}</span></div>
                   {responseData.timestamp && (
                     <div className="text-xs mt-2">
                       Time: {new Date(responseData.timestamp).toLocaleString()}
@@ -171,23 +162,7 @@ export default function MapLocationPage() {
           )}
           
           <button 
-            onClick={() => {
-              if (!navigator.geolocation) {
-                setError('Geolocation is not supported by your browser');
-                return;
-              }
-              navigator.geolocation.getCurrentPosition(
-                async (position) => {
-                  await sendLocationToAPI({
-                    latitude: position.coords.latitude,
-                    longitude: position.coords.longitude,
-                  });
-                },
-                (err) => {
-                  setError('Failed to get location');
-                }
-              );
-            }}
+            onClick={getAndSendLocation}
             disabled={loading}
             className="w-full mt-4 px-4 py-2 bg-primary/80 text-white rounded-lg hover:bg-primary transition-colors disabled:opacity-50"
           >
