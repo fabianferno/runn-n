@@ -48,7 +48,8 @@ export const MapComponent: React.FC<MapComponentProps> = ({
   hideBuildingLabels = false,
   hidePoiLabels = false,
   showGridOverlay = true,
-  gridSize = 20, // 20 meters
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  gridSize = 20, // 20 meters (unused)
   onMapLoad,
   onMapMove,
   onLocationFound,
@@ -62,7 +63,7 @@ export const MapComponent: React.FC<MapComponentProps> = ({
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
 
   // Territory game instance
-  const [territoryGame, setTerritoryGame] = useState<any>(null);
+  const [territoryGame, setTerritoryGame] = useState<import('@/lib/territory-game').TerritoryGame | null>(null);
 
   // Memoize callbacks to prevent unnecessary re-renders
   const handleMapLoad = useCallback(
@@ -207,7 +208,7 @@ export const MapComponent: React.FC<MapComponentProps> = ({
                   // Try to make text transparent
                   mapInstance.setPaintProperty(layerId, "text-opacity", 0);
                   mapInstance.setPaintProperty(layerId, "text-halo-blur", 0);
-                } catch (error) {
+                } catch {
                   // Ignore errors if properties don't exist
                   console.log(
                     "Paint property not available for layer:",
@@ -218,8 +219,8 @@ export const MapComponent: React.FC<MapComponentProps> = ({
             }
           });
         }
-      } catch (error) {
-        console.warn("Error hiding map labels:", error);
+      } catch {
+        console.warn("Error hiding map labels");
       }
     },
     [hideLabels, hideBuildingLabels, hidePoiLabels]
@@ -366,7 +367,13 @@ export const MapComponent: React.FC<MapComponentProps> = ({
     showScaleControl,
     handleMapLoad,
     handleMapMove,
-  ]); // Include only necessary dependencies
+    hideMapLabels,
+    lat,
+    lng,
+    showGridOverlay,
+    territoryGame,
+    zoom,
+  ]); // Include all dependencies to avoid stale closures
 
   return (
     <div className={`relative w-full h-full ${className}`}>
