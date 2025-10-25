@@ -178,6 +178,12 @@ export default function CreateQuestPage() {
                     </span>
                   </div>
                 )}
+                {creationStep.includes("Granting mint access") && (
+                  <div className="flex items-center justify-between p-2 bg-purple-500/10 rounded">
+                    <span className="text-purple-300">Step 3: Granting Mint Access</span>
+                    <span className="text-purple-300">Processing...</span>
+                  </div>
+                )}
               </div>
 
               {isPending && (
