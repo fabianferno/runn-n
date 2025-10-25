@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 import { GlassCard } from "@/components/glass-card";
@@ -9,226 +9,41 @@ import { CameraComponent } from "@/components/camera-component";
 import { LocationVerificationComponent } from "@/components/location-verification-component";
 import { ApiService } from "@/services/api.service";
 import { useMintDatacoin } from "@/hooks/useMintDatacoin";
-
-interface Quest {
-  id: string;
-  _id?: string;
-  title: string;
-  questName: string;
-  description: string;
-  questDescription: string;
-  location: string;
-  reward: string;
-  difficulty: "Easy" | "Medium" | "Hard";
-  status: "available" | "in_progress" | "completed";
-  photo?: string;
-  analysisCriteria?: string;
-  analysisResult?: {
-    verified: boolean;
-    confidence: number;
-    explanation: string;
-  };
-  ipfsHash?: string;
-  ipfsUrl?: string;
-  dataCoinAddress?: string;
-  poolAddress?: string;
-  creator?: string;
-}
+import { useQuestManagement } from "@/hooks/useQuestManagement";
 
 export default function QuestPage() {
   const router = useRouter();
   const { address, isConnected } = useAccount();
-  const { mintDatacoin, isLoading: isMinting, data: mintData, error: mintError } = useMintDatacoin();
+  const { mintDatacoin, isLoading: isMinting, error: mintError } = useMintDatacoin();
   
-  const [quests, setQuests] = useState<Quest[]>([]);
-  const [selectedQuest, setSelectedQuest] = useState<Quest | null>(null);
-  const [showCamera, setShowCamera] = useState(false);
-  const [showLocationVerification, setShowLocationVerification] = useState(false);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysisError, setAnalysisError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [pendingCompletions, setPendingCompletions] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'available' | 'completed'>('available');
+  const {
+    quests,
+    selectedQuest,
+    showCamera,
+    showLocationVerification,
+    isAnalyzing,
+    analysisError,
+    isLoading,
+    error,
+    pendingCompletions,
+    activeTab,
+    setActiveTab,
+    setShowCamera,
+    setShowLocationVerification,
+    setSelectedQuest,
+    setAnalysisError,
+    handleQuestClick,
+    handlePhotoTaken,
+    handleLocationVerified,
+    fetchQuests,
+  } = useQuestManagement();
 
-  // Fetch quests and pending completions from backend
+  // Fetch quests on mount and when address changes
   useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      setError(null);
-      
-      try {
-        // Fetch quests
-        const questResult = await ApiService.getAllQuests({
-          status: "active",
-          limit: 100
-        });
+    fetchQuests();
+  }, [fetchQuests]);
 
-        if (questResult.success && questResult.quests) {
-          const transformedQuests: Quest[] = questResult.quests.map((quest: any) => {
-            const difficultyMap: { [key: string]: "Easy" | "Medium" | "Hard" } = {
-              "easy": "Easy",
-              "medium": "Medium",
-              "hard": "Hard",
-              "Easy": "Easy",
-              "Medium": "Medium",
-              "Hard": "Hard",
-              "expert": "Hard"
-            };
-            
-            const statusMap: { [key: string]: "available" | "in_progress" | "completed" } = {
-              "active": "available",
-              "available": "available",
-              "in_progress": "in_progress",
-              "completed": "completed",
-              "cancelled": "completed"
-            };
 
-            return {
-              id: quest._id || quest.id,
-              _id: quest._id,
-              title: quest.questName,
-              questName: quest.questName,
-              description: quest.questDescription,
-              questDescription: quest.questDescription,
-              location: `${quest.chainName || 'Unknown'} Network`,
-              reward: `${quest.coinSymbol || 'Tokens'}`,
-              difficulty: difficultyMap[quest.difficulty] || "Medium",
-              status: statusMap[quest.status] || "available",
-              analysisCriteria: quest.questDescription,
-              dataCoinAddress: quest.dataCoinAddress,
-              poolAddress: quest.poolAddress,
-              creator: quest.creator,
-            } as Quest;
-          });
-          
-          setQuests(transformedQuests);
-        } else {
-          setError("Failed to fetch quests");
-        }
-
-        // Fetch pending completions if user is connected
-        if (address) {
-          try {
-            const completionsResult = await ApiService.getUserPendingCompletions(address);
-            if (completionsResult.success && completionsResult.completions) {
-              setPendingCompletions(completionsResult.completions);
-            }
-          } catch (err) {
-            console.error("Error fetching completions:", err);
-          }
-        }
-      } catch (err) {
-        console.error("Error fetching data:", err);
-        setError("Failed to load data. Please try again.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [address]);
-
-  const handleQuestClick = (quest: Quest) => {
-    setSelectedQuest(quest);
-    setShowCamera(true);
-  };
-
-  const handlePhotoTaken = async (photoData: string) => {
-    if (selectedQuest) {
-      setIsAnalyzing(true);
-      setAnalysisError(null);
-      
-      try {
-        // Analyze the image with OpenAI
-        const response = await fetch('/api/analyze-image', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            imageData: photoData,
-            criteria: selectedQuest.analysisCriteria,
-            questId: selectedQuest.id,
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to analyze image');
-        }
-
-        const result = await response.json();
-        
-        if (result.success && typeof result.verified === 'boolean') {
-          const updatedQuest = { 
-            ...selectedQuest, 
-            photo: photoData, 
-            status: "in_progress" as const,
-            analysisResult: {
-              verified: result.verified,
-              confidence: result.verified ? 1.0 : 0.0,
-              explanation: result.verified ? "Image meets criteria" : "Image does not meet criteria"
-            }
-          };
-          setSelectedQuest(updatedQuest);
-          setShowCamera(false);
-          
-          // If image analysis passes, proceed to location verification
-          if (result.verified) {
-            setShowLocationVerification(true);
-          } else {
-            setAnalysisError("Image analysis failed: Image does not meet the quest criteria");
-          }
-        } else {
-          throw new Error('Invalid analysis result');
-        }
-      } catch (error) {
-        console.error('Error analyzing image:', error);
-        setAnalysisError('Failed to analyze image. Please try again.');
-      } finally {
-        setIsAnalyzing(false);
-      }
-    }
-  };
-
-  const handleLocationVerified = async (proofs: { ipfsHash?: string; ipfsUrl?: string }) => {
-    if (selectedQuest && address) {
-      try {
-        // Register quest completion in backend
-        const completionResponse = await ApiService.registerQuestCompletion(
-          selectedQuest.id,
-          address
-        );
-
-        if (completionResponse.success) {
-          console.log('Quest completion registered:', completionResponse.completionId);
-          
-          // Update quest status
-          const updatedQuest = { 
-            ...selectedQuest, 
-            status: "completed" as const,
-            ipfsHash: proofs.ipfsHash,
-            ipfsUrl: proofs.ipfsUrl
-          };
-          setSelectedQuest(updatedQuest);
-          setShowLocationVerification(false);
-          
-          // Refresh pending completions
-          const completionsResult = await ApiService.getUserPendingCompletions(address);
-          if (completionsResult.success && completionsResult.completions) {
-            setPendingCompletions(completionsResult.completions);
-          }
-          
-          alert(`Quest completed! Check the "Completed" tab to mint your rewards.`);
-        } else {
-          alert(`Error: ${completionResponse.error}`);
-        }
-      } catch (error) {
-        console.error('Error registering completion:', error);
-        alert('Failed to register completion. Please try again.');
-      }
-    }
-  };
 
   const handleMintAll = async () => {
     if (!isConnected || !address) {
@@ -277,10 +92,7 @@ export default function QuestPage() {
       alert('All tokens minted successfully! 🎉');
       
       // Refresh pending completions
-      const completionsResult = await ApiService.getUserPendingCompletions(address);
-      if (completionsResult.success && completionsResult.completions) {
-        setPendingCompletions(completionsResult.completions);
-      }
+      fetchQuests();
     } catch (error) {
       console.error('Error minting tokens:', error);
       alert('Failed to mint tokens. Please try again.');
@@ -481,10 +293,6 @@ export default function QuestPage() {
               className="p-4 cursor-pointer hover:bg-white/15 transition-all card-hover touch-manipulation"
               style={{ animationDelay: `${idx * 0.1}s`, touchAction: 'manipulation' }}
               onClick={() => handleQuestClick(quest)}
-              onTouchEnd={(e: React.TouchEvent) => {
-                e.preventDefault();
-                handleQuestClick(quest);
-              }}
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
@@ -622,13 +430,7 @@ export default function QuestPage() {
                   setAnalysisError(null);
                   setShowCamera(true);
                 }}
-                onTouchEnd={(e: React.TouchEvent) => {
-                  e.preventDefault();
-                  setAnalysisError(null);
-                  setShowCamera(true);
-                }}
-                className="flex-1 px-4 py-2 bg-primary/80 text-white rounded-lg hover:bg-primary transition-colors min-h-[44px] touch-manipulation"
-                style={{ touchAction: 'manipulation' }}
+                className="flex-1 px-4 py-2 bg-primary/80 text-white rounded-lg hover:bg-primary transition-colors min-h-[44px]"
               >
                 Retake Photo
               </button>
@@ -637,13 +439,7 @@ export default function QuestPage() {
                   setAnalysisError(null);
                   setSelectedQuest(null);
                 }}
-                onTouchEnd={(e: React.TouchEvent) => {
-                  e.preventDefault();
-                  setAnalysisError(null);
-                  setSelectedQuest(null);
-                }}
-                className="flex-1 px-4 py-2 bg-gray-500/20 text-gray-300 rounded-lg hover:bg-gray-500/30 transition-colors min-h-[44px] touch-manipulation"
-                style={{ touchAction: 'manipulation' }}
+                className="flex-1 px-4 py-2 bg-gray-500/20 text-gray-300 rounded-lg hover:bg-gray-500/30 transition-colors min-h-[44px]"
               >
                 Cancel
               </button>
