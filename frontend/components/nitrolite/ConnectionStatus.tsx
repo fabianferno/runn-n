@@ -29,8 +29,9 @@ const getAuthDomain = () => ({
 
 // CHAPTER 3: Authentication constants
 const AUTH_SCOPE = 'run-n.app';
-const APP_NAME = 'Run-n';
+const APP_NAME = 'run-n';
 const SESSION_DURATION = 3600; // 1 hour
+
 
 
 export default function ConnectionStatus() {
