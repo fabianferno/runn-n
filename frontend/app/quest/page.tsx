@@ -8,7 +8,7 @@ import { BottomNav } from "@/components/bottom-nav";
 import { CameraComponent } from "@/components/camera-component";
 import { LocationVerificationComponent } from "@/components/location-verification-component";
 import { ApiService } from "@/services/api.service";
-import { useMintDatacoin } from "@/lib/ipfs-utils";
+import { useMintDatacoin } from "@/hooks/useMintDatacoin";
 
 interface Quest {
   id: string;
