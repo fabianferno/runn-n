@@ -2,16 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
-import { parseUnits } from "viem";
+import { useAccount } from "wagmi";
 import { GlassCard } from "@/components/glass-card";
 import { BottomNav } from "@/components/bottom-nav";
-import { FloatingActionButton } from "@/components/floating-action-button";
 import { CameraComponent } from "@/components/camera-component";
 import { LocationVerificationComponent } from "@/components/location-verification-component";
 import { ApiService } from "@/services/api.service";
-// @ts-expect-error - ABI files are CommonJS modules
-import DataCoinABI from "@/lib/abi/DataCoin";
+import { useMintDatacoin } from "@/lib/ipfs-utils";
 
 interface Quest {
   id: string;
@@ -38,11 +35,10 @@ interface Quest {
   creator?: string;
 }
 
-export function QuestPage() {
+export default function QuestPage() {
   const router = useRouter();
   const { address, isConnected } = useAccount();
-  const { writeContract, data: hash, isPending, error: writeError } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
+  const { mintDatacoin, isLoading: isMinting, data: mintData, error: mintError } = useMintDatacoin();
   
   const [quests, setQuests] = useState<Quest[]>([]);
   const [selectedQuest, setSelectedQuest] = useState<Quest | null>(null);
@@ -52,74 +48,86 @@ export function QuestPage() {
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [completionData, setCompletionData] = useState<any>(null);
-  const [showMintButton, setShowMintButton] = useState(false);
+  const [pendingCompletions, setPendingCompletions] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'available' | 'completed'>('available');
 
-  // Fetch quests from backend
+  // Fetch quests and pending completions from backend
   useEffect(() => {
-    const fetchQuests = async () => {
+    const fetchData = async () => {
       setIsLoading(true);
       setError(null);
       
       try {
-        const result = await ApiService.getAllQuests({
+        // Fetch quests
+        const questResult = await ApiService.getAllQuests({
           status: "active",
           limit: 100
         });
 
-        if (result.success && result.quests) {
-                     // Transform backend quests to frontend format
-           const transformedQuests: Quest[] = result.quests.map((quest: any) => {
-             const difficultyMap: { [key: string]: "Easy" | "Medium" | "Hard" } = {
-               "easy": "Easy",
-               "medium": "Medium",
-               "hard": "Hard",
-               "Easy": "Easy",
-               "Medium": "Medium",
-               "Hard": "Hard",
-               "expert": "Hard"
-             };
-             
-             const statusMap: { [key: string]: "available" | "in_progress" | "completed" } = {
-               "active": "available",
-               "available": "available",
-               "in_progress": "in_progress",
-               "completed": "completed",
-               "cancelled": "completed"
-             };
+        if (questResult.success && questResult.quests) {
+          const transformedQuests: Quest[] = questResult.quests.map((quest: any) => {
+            const difficultyMap: { [key: string]: "Easy" | "Medium" | "Hard" } = {
+              "easy": "Easy",
+              "medium": "Medium",
+              "hard": "Hard",
+              "Easy": "Easy",
+              "Medium": "Medium",
+              "Hard": "Hard",
+              "expert": "Hard"
+            };
+            
+            const statusMap: { [key: string]: "available" | "in_progress" | "completed" } = {
+              "active": "available",
+              "available": "available",
+              "in_progress": "in_progress",
+              "completed": "completed",
+              "cancelled": "completed"
+            };
 
-                           return {
-                id: quest._id || quest.id,
-                _id: quest._id,
-                title: quest.questName,
-                questName: quest.questName,
-                description: quest.questDescription,
-                questDescription: quest.questDescription,
-                location: `${quest.chainName || 'Unknown'} Network`,
-                reward: `${quest.coinSymbol || 'Tokens'}`,
-                difficulty: difficultyMap[quest.difficulty] || "Medium",
-                status: statusMap[quest.status] || "available",
-                analysisCriteria: quest.questDescription,
-                dataCoinAddress: quest.dataCoinAddress,
-                poolAddress: quest.poolAddress,
-                creator: quest.creator,
-              } as Quest;
-            });
+            return {
+              id: quest._id || quest.id,
+              _id: quest._id,
+              title: quest.questName,
+              questName: quest.questName,
+              description: quest.questDescription,
+              questDescription: quest.questDescription,
+              location: `${quest.chainName || 'Unknown'} Network`,
+              reward: `${quest.coinSymbol || 'Tokens'}`,
+              difficulty: difficultyMap[quest.difficulty] || "Medium",
+              status: statusMap[quest.status] || "available",
+              analysisCriteria: quest.questDescription,
+              dataCoinAddress: quest.dataCoinAddress,
+              poolAddress: quest.poolAddress,
+              creator: quest.creator,
+            } as Quest;
+          });
           
           setQuests(transformedQuests);
         } else {
           setError("Failed to fetch quests");
         }
+
+        // Fetch pending completions if user is connected
+        if (address) {
+          try {
+            const completionsResult = await ApiService.getUserPendingCompletions(address);
+            if (completionsResult.success && completionsResult.completions) {
+              setPendingCompletions(completionsResult.completions);
+            }
+          } catch (err) {
+            console.error("Error fetching completions:", err);
+          }
+        }
       } catch (err) {
-        console.error("Error fetching quests:", err);
-        setError("Failed to load quests. Please try again.");
+        console.error("Error fetching data:", err);
+        setError("Failed to load data. Please try again.");
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchQuests();
-  }, []);
+    fetchData();
+  }, [address]);
 
   const handleQuestClick = (quest: Quest) => {
     setSelectedQuest(quest);
@@ -183,7 +191,7 @@ export function QuestPage() {
     }
   };
 
-  const handleLocationVerified = async (proofs: any) => {
+  const handleLocationVerified = async (proofs: { ipfsHash?: string; ipfsUrl?: string }) => {
     if (selectedQuest && address) {
       try {
         // Register quest completion in backend
@@ -195,10 +203,6 @@ export function QuestPage() {
         if (completionResponse.success) {
           console.log('Quest completion registered:', completionResponse.completionId);
           
-          // Store completion data for minting
-          setCompletionData(completionResponse.data);
-          setShowMintButton(true);
-          
           // Update quest status
           const updatedQuest = { 
             ...selectedQuest, 
@@ -209,7 +213,13 @@ export function QuestPage() {
           setSelectedQuest(updatedQuest);
           setShowLocationVerification(false);
           
-          alert(`Quest completed! You can now mint your reward.`);
+          // Refresh pending completions
+          const completionsResult = await ApiService.getUserPendingCompletions(address);
+          if (completionsResult.success && completionsResult.completions) {
+            setPendingCompletions(completionsResult.completions);
+          }
+          
+          alert(`Quest completed! Check the "Completed" tab to mint your rewards.`);
         } else {
           alert(`Error: ${completionResponse.error}`);
         }
@@ -220,78 +230,60 @@ export function QuestPage() {
     }
   };
 
-  const handleMintNow = async () => {
-    if (!completionData || !address || !isConnected) {
+  const handleMintAll = async () => {
+    if (!isConnected || !address) {
       alert('Please connect your wallet first');
       return;
     }
 
+    if (pendingCompletions.length === 0) {
+      alert('No pending completions to mint');
+      return;
+    }
+
     try {
-      // Call mint function on DataCoin contract
-      const mintAmount = parseUnits(completionData.mintAmount.toString(), 18);
+      // Group completions by dataCoinAddress to batch mint
+      const groupedCompletions: { [key: string]: any[] } = {};
       
-      await writeContract({
-        address: completionData.dataCoinAddress as `0x${string}`,
-        abi: DataCoinABI,
-        functionName: "mint",
-        args: [address, mintAmount],
-      });
-    } catch (error) {
-      console.error('Error initiating mint:', error);
-      alert('Failed to initiate mint. Please try again.');
-    }
-  };
-
-  // Handle mint transaction confirmation
-  useEffect(() => {
-    if (isConfirmed && hash && completionData) {
-      // Mark completion as minted in backend
-      ApiService.markCompletionAsMinted(completionData.completionId || '', hash as string)
-        .then(() => {
-          console.log('Completion marked as minted');
-          setShowMintButton(false);
-          setCompletionData(null);
-          alert('Tokens minted successfully! 🎉');
-        })
-        .catch((error) => {
-          console.error('Error marking as minted:', error);
-        });
-    }
-  }, [isConfirmed, hash, completionData]);
-
-  const testImageAnalysis = async (imageData: string, criteria: string) => {
-    setIsAnalyzing(true);
-    setAnalysisError(null);
-    
-    try {
-      const response = await fetch('/api/analyze-image', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          imageData: imageData,
-          criteria: criteria,
-          questId: 'test',
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to analyze image');
+      for (const completion of pendingCompletions) {
+        const dataCoinAddress = completion.dataCoinAddress;
+        if (!groupedCompletions[dataCoinAddress]) {
+          groupedCompletions[dataCoinAddress] = [];
+        }
+        groupedCompletions[dataCoinAddress].push(completion);
       }
 
-      const result = await response.json();
+      // Mint tokens for each dataCoin
+      for (const [dataCoinAddress, completions] of Object.entries(groupedCompletions)) {
+        const totalAmount = completions.reduce((sum, c) => sum + (c.mintAmount || 0), 0);
+        
+        console.log(`Minting ${totalAmount} tokens to ${address} for ${completions.length} completions`);
+        
+        // Use the ipfs-utils hook to mint
+        const result = await mintDatacoin(address, totalAmount);
+        
+        if (result) {
+          // Mark all completions as minted
+          for (const completion of completions) {
+            try {
+              await ApiService.markCompletionAsMinted(completion._id || completion.id, result.txHash);
+            } catch (err) {
+              console.error('Error marking completion as minted:', err);
+            }
+          }
+        }
+      }
+
+      alert('All tokens minted successfully! 🎉');
       
-      if (result.success && typeof result.verified === 'boolean') {
-        alert(`Analysis Result:\n\nVerified: ${result.verified ? 'YES' : 'NO'}\n\n${result.verified ? '✅ Image meets the criteria!' : '❌ Image does not meet the criteria.'}`);
-      } else {
-        throw new Error('Invalid analysis result');
+      // Refresh pending completions
+      const completionsResult = await ApiService.getUserPendingCompletions(address);
+      if (completionsResult.success && completionsResult.completions) {
+        setPendingCompletions(completionsResult.completions);
       }
     } catch (error) {
-      console.error('Error analyzing image:', error);
-      setAnalysisError('Failed to analyze image. Please try again.');
-    } finally {
-      setIsAnalyzing(false);
+      console.error('Error minting tokens:', error);
+      alert('Failed to mint tokens. Please try again.');
     }
   };
 
@@ -334,6 +326,35 @@ export function QuestPage() {
           <div className="w-10 h-10 rounded-full bg-primary animate-subtle-bounce" />
         </div>
 
+        {/* Tabs */}
+        <div className="flex gap-2 mb-6">
+          <button
+            onClick={() => setActiveTab('available')}
+            className={`flex-1 px-4 py-2 rounded-lg transition-colors ${
+              activeTab === 'available'
+                ? 'bg-primary/20 text-primary font-semibold'
+                : 'bg-white/5 text-muted-foreground'
+            }`}
+          >
+            Available
+          </button>
+          <button
+            onClick={() => setActiveTab('completed')}
+            className={`flex-1 px-4 py-2 rounded-lg transition-colors relative ${
+              activeTab === 'completed'
+                ? 'bg-primary/20 text-primary font-semibold'
+                : 'bg-white/5 text-muted-foreground'
+            }`}
+          >
+            Completed
+            {pendingCompletions.length > 0 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-xs text-white">
+                {pendingCompletions.length}
+              </span>
+            )}
+          </button>
+        </div>
+
         {/* Quest Stats */}
         <div className="grid grid-cols-3 gap-2 mb-6">
           <GlassCard className="p-3 text-center">
@@ -355,22 +376,55 @@ export function QuestPage() {
         </div>
 
         {/* Create DataCoin Button */}
-        <GlassCard 
-          className="p-4 mb-6 cursor-pointer hover:bg-white/15 transition-all card-hover"
-          onClick={() => router.push('/quest/create')}
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-semibold text-foreground mb-1">Create DataCoin</h3>
-              <p className="text-sm text-muted-foreground">
-                Deploy your own DataCoin and set up allocations
+        {activeTab === 'available' && (
+          <GlassCard 
+            className="p-4 mb-6 cursor-pointer hover:bg-white/15 transition-all card-hover"
+            onClick={() => router.push('/quest/create')}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-foreground mb-1">Create DataCoin</h3>
+                <p className="text-sm text-muted-foreground">
+                  Deploy your own DataCoin and set up allocations
+                </p>
+              </div>
+              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                <span className="text-primary text-sm font-bold">+</span>
+              </div>
+            </div>
+          </GlassCard>
+        )}
+
+        {/* Mint All Button for Completed Tab */}
+        {activeTab === 'completed' && pendingCompletions.length > 0 && (
+          <GlassCard className="p-4 mb-6 border-green-500/30">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3 className="font-semibold text-foreground">Ready to Mint!</h3>
+                <p className="text-sm text-muted-foreground">
+                  {pendingCompletions.length} quest{pendingCompletions.length !== 1 ? 's' : ''} completed
+                </p>
+              </div>
+              <div className="text-2xl">🎁</div>
+            </div>
+            <button
+              onClick={handleMintAll}
+              disabled={!isConnected || isMinting}
+              className="w-full px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+            >
+              {!isConnected
+                ? "Connect Wallet"
+                : isMinting
+                ? "Minting..."
+                : `Mint All (${pendingCompletions.length})`}
+            </button>
+            {mintError && (
+              <p className="text-xs text-center text-red-400 mt-2">
+                Error: {mintError}
               </p>
-            </div>
-            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-              <span className="text-primary text-sm font-bold">+</span>
-            </div>
-          </div>
-        </GlassCard>
+            )}
+          </GlassCard>
+        )}
 
         {/* Loading State */}
         {isLoading && (
@@ -418,7 +472,7 @@ export function QuestPage() {
         )}
 
         {/* Quests List */}
-        {!isLoading && !error && quests.length > 0 && (
+        {!isLoading && !error && activeTab === 'available' && quests.length > 0 && (
           <div className="space-y-3">
             <h2 className="text-lg font-bold text-foreground mb-3">Available Quests</h2>
             {quests.map((quest, idx) => (
@@ -467,6 +521,54 @@ export function QuestPage() {
               </div>
             </GlassCard>
             ))}
+          </div>
+        )}
+
+        {/* Completed Quests List */}
+        {!isLoading && !error && activeTab === 'completed' && (
+          <div className="space-y-3">
+            <h2 className="text-lg font-bold text-foreground mb-3">Completed Quests</h2>
+            {pendingCompletions.length === 0 ? (
+              <GlassCard className="p-6 text-center">
+                <div className="text-4xl mb-2">🎯</div>
+                <h3 className="text-lg font-semibold text-foreground mb-2">
+                  No Completed Quests
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Complete some quests to see them here
+                </p>
+              </GlassCard>
+            ) : (
+              pendingCompletions.map((completion: any, idx: number) => (
+                <GlassCard key={completion._id || completion.id} className="p-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-foreground mb-1">
+                        {completion.questId}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        {completion.dataCoinAddress && (
+                          <span className="font-mono text-xs break-all">
+                            {completion.dataCoinAddress.slice(0, 10)}...{completion.dataCoinAddress.slice(-8)}
+                          </span>
+                        )}
+                      </p>
+                      <div className="mt-2 flex items-center gap-4 text-xs">
+                        <div className="flex items-center gap-1">
+                          <span className="text-muted-foreground">🎁</span>
+                          <span className="text-primary">{completion.mintAmount || 0} tokens</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xs px-2 py-1 rounded-full bg-green-500/20 text-green-300 font-medium">
+                        Ready
+                      </span>
+                    </div>
+                  </div>
+                </GlassCard>
+              ))
+            )}
           </div>
         )}
       </div>
@@ -562,51 +664,6 @@ export function QuestPage() {
         />
       )}
 
-      {/* Mint Button */}
-      {showMintButton && completionData && (
-        <div className="fixed bottom-28 left-0 right-0 px-4 z-40">
-          <GlassCard className="p-4 mb-4 border-green-500/30">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <h3 className="font-semibold text-foreground">Ready to Mint!</h3>
-                <p className="text-sm text-muted-foreground">
-                  {completionData.mintAmount} tokens are ready
-                </p>
-              </div>
-              <div className="text-2xl">🎁</div>
-            </div>
-            <button
-              onClick={handleMintNow}
-              disabled={!isConnected || isPending || isConfirming}
-              className="w-full px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
-            >
-              {!isConnected
-                ? "Connect Wallet"
-                : isPending
-                ? "Confirming..."
-                : isConfirming
-                ? "Minting..."
-                : "Mint Now"}
-            </button>
-            {isPending && (
-              <p className="text-xs text-center text-muted-foreground mt-2">
-                Please confirm the transaction in your wallet
-              </p>
-            )}
-            {isConfirming && (
-              <p className="text-xs text-center text-blue-300 mt-2">
-                Transaction confirming on blockchain...
-              </p>
-            )}
-            {writeError && (
-              <p className="text-xs text-center text-red-400 mt-2">
-                Error: {writeError.message}
-              </p>
-            )}
-          </GlassCard>
-        </div>
-      )}
-
       <BottomNav
         items={[
           { href: "/home", label: "Map", icon: "M" },
@@ -618,5 +675,3 @@ export function QuestPage() {
     </main>
   );
 }
-
-export default QuestPage;
