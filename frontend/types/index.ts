@@ -376,29 +376,6 @@ export interface MapComponentProps {
   onCapture?: (data: PathResponse) => void;
 }
 
-export interface MapControlsProps {
-  isTracking: boolean;
-  isRecording: boolean;
-  onStartTracking: () => void;
-  onStopTracking: () => void;
-  onSubmitDataCoin: () => void;
-  distance: number;
-  elapsedTime: number;
-}
-
-export interface MapStatsProps {
-  currentLocation: {
-    latitude: number;
-    longitude: number;
-  } | null;
-  pathPoints: number;
-  capturedHexes: number;
-  lastDataCoinLocation: {
-    latitude: number;
-    longitude: number;
-  } | null;
-}
-
 // ============================================
 // Hook Return Types
 // ============================================

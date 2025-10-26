@@ -6,12 +6,14 @@ interface RunTimerDisplayProps {
   elapsedTime: number;
   distance: number;
   pace: number;
+  hexesCaptured?: number;
 }
 
 export function RunTimerDisplay({
   elapsedTime,
   distance,
   pace,
+  hexesCaptured = 0,
 }: RunTimerDisplayProps) {
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
@@ -58,8 +60,8 @@ export function RunTimerDisplay({
         </div>
         <div className="neumorphic-inset p-4">
           <div className="text-muted-foreground text-xs mb-1">Hex Captured</div>
-          <div className="text-lg font-bold text-accent">
-            {distance > 0 ? "1" : "0"}
+          <div className="text-2xl font-bold text-accent">
+            {hexesCaptured}
           </div>
         </div>
       </div>

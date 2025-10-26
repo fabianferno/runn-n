@@ -85,6 +85,19 @@ export const MapComponent: React.FC<MapComponentProps> = ({
     return () => clearInterval(interval);
   }, [isRecording]);
 
+  // Emit state updates for external UI components
+  useEffect(() => {
+    const event = new CustomEvent('map-state-update', {
+      detail: {
+        isRecording,
+        elapsedTime,
+        distance,
+        hexesCaptured: realtimeHexes.size,
+      }
+    });
+    window.dispatchEvent(event);
+  }, [isRecording, elapsedTime, distance, realtimeHexes.size]);
+
   // Walking Simulation
   useEffect(() => {
     if (isSimulating) {
@@ -595,539 +608,87 @@ export const MapComponent: React.FC<MapComponentProps> = ({
   };
 
   return (
-    <div style={{ padding: "20px", maxWidth: "1200px", margin: "0 auto" }}>
-      {/* Map Container */}
-      <div className="px-4 py-6 animate-scale-in">
-        <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-white/20"></div>
-        <div
-          style={{
-            width: "100%",
-            height: "600px",
-            borderRadius: "12px",
-            overflow: "hidden",
-            marginBottom: "30px",
-            boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
-            position: "relative",
-          }}
-        >
-          {/* Nitrolite Status Indicator */}
-          <div
-            style={{
-              position: "absolute",
-              top: "20px",
-              right: "20px",
-              zIndex: 1000,
-              padding: "10px 16px",
-              borderRadius: "8px",
-              boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-              fontSize: "14px",
-              fontWeight: "500",
-              background: isAppSessionCreated ? "#10b981" : "#f59e0b",
-              color: isAppSessionCreated ? "white" : "#000",
-            }}
-          >
-            {isAppSessionCreated ? "🟢 Nitrolite Active" : "⚠️ Create App Session"}
-          </div>
-          
-          <div
-            ref={mapContainerRef}
-            style={{ width: "100%", height: "100%" }}
-          />
-        </div>
-      </div>
-      {/* Controls Section */}
+    <div style={{ width: "100%", height: "100%", position: "relative" }}>
+      {/* Map Container - FULL */}
       <div
         style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: "20px",
-          marginBottom: "30px",
+          width: "100%",
+          height: "100%",
+          position: "relative",
         }}
       >
-        {/* Left Column - Controls */}
+        {/* Nitrolite Status Indicator */}
         <div
           style={{
-            background: "white",
-            padding: "20px",
-            borderRadius: "12px",
-            boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
+            position: "absolute",
+            top: "10px",
+            right: "10px",
+            zIndex: 1000,
+            padding: "8px 12px",
+            borderRadius: "8px",
+            boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+            fontSize: "12px",
+            fontWeight: "500",
+            background: isAppSessionCreated ? "#10b981" : "#f59e0b",
+            color: isAppSessionCreated ? "white" : "#000",
           }}
         >
-          <h3
-            style={{
-              margin: "0 0 20px 0",
-              fontSize: "20px",
-              fontWeight: "bold",
-            }}
-          >
-            Controls
-          </h3>
-
-          {/* Start/Stop Button */}
-          <button
-            onClick={isRecording ? handleStopTracking : handleStartTracking}
-            style={{
-              width: "100%",
-              padding: "16px",
-              marginBottom: "12px",
-              fontSize: "18px",
-              fontWeight: "bold",
-              backgroundColor: isRecording ? "#ef4444" : "#10b981",
-              color: "white",
-              border: "none",
-              borderRadius: "8px",
-              cursor: "pointer",
-              transition: "all 0.2s",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "scale(1.02)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "scale(1)";
-            }}
-          >
-            {isRecording ? "⏹ Stop Tracking" : "▶ Start Tracking"}
-          </button>
-
-          {/* Submit Data Coin Button */}
-          <button
-            onClick={handleSubmitDataCoin}
-            disabled={!isRecording}
-            style={{
-              width: "100%",
-              padding: "16px",
-              marginBottom: "12px",
-              fontSize: "18px",
-              fontWeight: "bold",
-              backgroundColor: isRecording ? "#3b82f6" : "#9ca3af",
-              color: "white",
-              border: "none",
-              borderRadius: "8px",
-              cursor: isRecording ? "pointer" : "not-allowed",
-              transition: "all 0.2s",
-            }}
-            onMouseEnter={(e) => {
-              if (isRecording) {
-                e.currentTarget.style.transform = "scale(1.02)";
-              }
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "scale(1)";
-            }}
-          >
-            🪙 Submit Data Coin
-          </button>
-
-          {/* Simulate Walking Button */}
-          <button
-            onClick={() => {
-              if (!isSimulating) {
-                setSimulatedLocation(null); // Reset location to pick new direction
-              }
-              setIsSimulating(!isSimulating);
-            }}
-            style={{
-              width: "100%",
-              padding: "16px",
-              marginBottom: "12px",
-              fontSize: "18px",
-              fontWeight: "bold",
-              backgroundColor: isSimulating ? "#f97316" : "#8b5cf6",
-              color: "white",
-              border: "none",
-              borderRadius: "8px",
-              cursor: "pointer",
-              transition: "all 0.2s",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "scale(1.02)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "scale(1)";
-            }}
-          >
-            {isSimulating ? "⏹ Stop Simulation" : "🚶 Simulate Walking"}
-          </button>
-
-          {/* Direction Controls - only show when simulating */}
-          {isSimulating && (
-            <div style={{ marginBottom: "12px" }}>
-              <div style={{ 
-                fontSize: "12px", 
-                color: "#6b7280", 
-                marginBottom: "8px",
-                textAlign: "center"
-              }}>
-                Change Direction
-              </div>
-              <div style={{ 
-                display: "grid", 
-                gridTemplateColumns: "1fr 1fr 1fr",
-                gap: "8px"
-              }}>
-                <button
-                  onClick={() => {
-                    simulationDirectionRef.current = Math.PI; // West
-                    console.log("🚶 Changed direction: West ⬅️");
-                  }}
-                  style={{
-                    padding: "12px",
-                    backgroundColor: "#6366f1",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "6px",
-                    cursor: "pointer",
-                    fontSize: "20px",
-                  }}
-                >
-                  ⬅️
-                </button>
-                <button
-                  onClick={() => {
-                    simulationDirectionRef.current = Math.PI / 2; // North
-                    console.log("🚶 Changed direction: North ⬆️");
-                  }}
-                  style={{
-                    padding: "12px",
-                    backgroundColor: "#6366f1",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "6px",
-                    cursor: "pointer",
-                    fontSize: "20px",
-                  }}
-                >
-                  ⬆️
-                </button>
-                <button
-                  onClick={() => {
-                    simulationDirectionRef.current = 0; // East
-                    console.log("🚶 Changed direction: East ➡️");
-                  }}
-                  style={{
-                    padding: "12px",
-                    backgroundColor: "#6366f1",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "6px",
-                    cursor: "pointer",
-                    fontSize: "20px",
-                  }}
-                >
-                  ➡️
-                </button>
-                <div></div>
-                <button
-                  onClick={() => {
-                    simulationDirectionRef.current = (3 * Math.PI) / 2; // South
-                    console.log("🚶 Changed direction: South ⬇️");
-                  }}
-                  style={{
-                    padding: "12px",
-                    backgroundColor: "#6366f1",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "6px",
-                    cursor: "pointer",
-                    fontSize: "20px",
-                  }}
-                >
-                  ⬇️
-                </button>
-                <div></div>
-              </div>
-            </div>
-          )}
-          <button
-            onClick={async () => {
-              try {
-                const response = await fetch(`https://remo.crevn.xyz/health`);
-                const data = await response.json();
-                alert("Backend is accessible! " + JSON.stringify(data));
-              } catch (error: any) {
-                alert("Cannot reach backend: " + error.message);
-              }
-            }}
-            style={{
-              padding: "10px",
-              background: "orange",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-              marginTop: "10px",
-              width: "100%",
-            }}
-          >
-            🔧 Test Backend Connection
-          </button>
-          {/* Live Stats */}
-          <div
-            style={{
-              marginTop: "20px",
-              padding: "15px",
-              background: "#f9fafb",
-              borderRadius: "8px",
-            }}
-          >
-            <div style={{ marginBottom: "12px" }}>
-              <div
-                style={{
-                  fontSize: "12px",
-                  color: "#6b7280",
-                  marginBottom: "4px",
-                }}
-              >
-                Status
-              </div>
-              <div
-                style={{
-                  fontSize: "18px",
-                  fontWeight: "bold",
-                  color: isRecording ? "#ef4444" : "#6b7280",
-                }}
-              >
-                {isRecording ? "🔴 Recording" : "⚪ Idle"}
-              </div>
-            </div>
-
-            <div style={{ marginBottom: "12px" }}>
-              <div
-                style={{
-                  fontSize: "12px",
-                  color: "#6b7280",
-                  marginBottom: "4px",
-                }}
-              >
-                Time Elapsed
-              </div>
-              <div
-                style={{
-                  fontSize: "24px",
-                  fontWeight: "bold",
-                  fontFamily: "monospace",
-                }}
-              >
-                {formatTime(elapsedTime)}
-              </div>
-            </div>
-
-            <div>
-              <div
-                style={{
-                  fontSize: "12px",
-                  color: "#6b7280",
-                  marginBottom: "4px",
-                }}
-              >
-                Distance Covered
-              </div>
-              <div
-                style={{
-                  fontSize: "24px",
-                  fontWeight: "bold",
-                  color: "#10b981",
-                }}
-              >
-                {formatDistance(distance)}
-              </div>
-            </div>
-          </div>
+          {isAppSessionCreated ? "🟢 Live" : "⚠️ Offline"}
         </div>
-
-        {/* Right Column - Stats */}
+        
         <div
-          style={{
-            background: "white",
-            padding: "20px",
-            borderRadius: "12px",
-            boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
-          }}
-        >
-          <h3
-            style={{
-              margin: "0 0 20px 0",
-              fontSize: "20px",
-              fontWeight: "bold",
-            }}
-          >
-            Statistics
-          </h3>
-
-          {/* Current Location */}
-          <div
-            style={{
-              marginBottom: "20px",
-              padding: "15px",
-              background: "#f9fafb",
-              borderRadius: "8px",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "12px",
-                color: "#6b7280",
-                marginBottom: "8px",
-              }}
-            >
-              📍 Current Location
-            </div>
-            {currentLocation ? (
-              <div style={{ fontSize: "14px", fontFamily: "monospace" }}>
-                <div>
-                  <strong>Lat:</strong> {currentLocation.latitude.toFixed(6)}
-                </div>
-                <div>
-                  <strong>Lng:</strong> {currentLocation.longitude.toFixed(6)}
-                </div>
-                <div
-                  style={{
-                    fontSize: "12px",
-                    color: "#6b7280",
-                    marginTop: "4px",
-                  }}
-                >
-                  Accuracy: ±{currentLocation.accuracy.toFixed(0)}m
-                </div>
-              </div>
-            ) : (
-              <div style={{ fontSize: "14px", color: "#9ca3af" }}>
-                No location data
-              </div>
-            )}
-          </div>
-
-          {/* Path Stats */}
-          <div
-            style={{
-              marginBottom: "20px",
-              padding: "15px",
-              background: "#f9fafb",
-              borderRadius: "8px",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "12px",
-                color: "#6b7280",
-                marginBottom: "8px",
-              }}
-            >
-              📊 Session Stats
-            </div>
-            <div style={{ fontSize: "16px" }}>
-              <div style={{ marginBottom: "8px" }}>
-                <strong>Path Points:</strong> {path.length}
-              </div>
-              <div style={{ marginBottom: "8px" }}>
-                <strong style={{ color: "#10b981" }}>This Session:</strong>{" "}
-                <span
-                  style={{
-                    fontSize: "20px",
-                    fontWeight: "bold",
-                    color: "#10b981",
-                  }}
-                >
-                  {realtimeHexes.size}
-                </span>{" "}
-                hexes
-              </div>
-              <div style={{ marginBottom: "8px" }}>
-                <strong style={{ color: "#3b82f6" }}>Total Hexes:</strong>{" "}
-                <span
-                  style={{
-                    fontSize: "18px",
-                    fontWeight: "bold",
-                    color: "#3b82f6",
-                  }}
-                >
-                  {totalUserHexes}
-                </span>
-              </div>
-              {userRank && (
-                <div>
-                  <strong style={{ color: "#f59e0b" }}>Rank:</strong>{" "}
-                  <span
-                    style={{
-                      fontSize: "18px",
-                      fontWeight: "bold",
-                      color: "#f59e0b",
-                    }}
-                  >
-                    #{userRank}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Last Data Coin Location */}
-          {lastDataCoinLocation && (
-            <div
-              style={{
-                padding: "15px",
-                background: "#dbeafe",
-                borderRadius: "8px",
-                border: "2px solid #3b82f6",
-              }}
-            >
-              <div
-                style={{
-                  fontSize: "14px",
-                  color: "#1e40af",
-                  marginBottom: "8px",
-                  fontWeight: "bold",
-                }}
-              >
-                🪙 Last Data Coin
-              </div>
-              <div
-                style={{
-                  fontSize: "14px",
-                  fontFamily: "monospace",
-                  color: "#1e3a8a",
-                }}
-              >
-                <div>Lat: {lastDataCoinLocation.latitude.toFixed(6)}</div>
-                <div>Lng: {lastDataCoinLocation.longitude.toFixed(6)}</div>
-              </div>
-            </div>
-          )}
-        </div>
+          ref={mapContainerRef}
+          style={{ width: "100%", height: "100%" }}
+        />
       </div>
 
-      {/* Debug Console */}
-      <div
-        style={{
-          background: "#1f2937",
-          color: "#10b981",
-          padding: "20px",
-          borderRadius: "12px",
-          fontFamily: "monospace",
-          fontSize: "14px",
-          maxHeight: "300px",
-          overflowY: "auto",
-        }}
-      >
-        <div style={{ marginBottom: "10px", color: "#9ca3af" }}>
-          === Debug Console ===
-        </div>
-        <div style={{ color: "#fbbf24" }}>🟡 Message Version: {messageVersionRef.current}</div>
-        <div>Simulation: {isSimulating ? `ACTIVE 🚶 ${getDirectionName(simulationDirectionRef.current)}` : "INACTIVE"}</div>
-        <div>Recording: {isRecording ? "TRUE" : "FALSE"}</div>
-        <div>Path Points: {path.length}</div>
-        <div>Matched Path Points: {matchedPath.length}</div>
-        <div>Distance: {distance.toFixed(2)}m</div>
-        <div>Time: {elapsedTime}s</div>
-        <div style={{ color: "#10b981" }}>Session Hexes: {realtimeHexes.size}</div>
-        <div style={{ color: "#3b82f6" }}>Total User Hexes: {totalUserHexes}</div>
-        {userRank && <div style={{ color: "#f59e0b" }}>Rank: #{userRank}</div>}
-        {currentLocation && (
-          <>
-            <div>Current Lat: {currentLocation.latitude.toFixed(6)}</div>
-            <div>Current Lng: {currentLocation.longitude.toFixed(6)}</div>
-          </>
-        )}
+      {/* Hidden Control Buttons for External Triggering */}
+      <div style={{ display: "none" }}>
+        <button
+          data-map-action={isRecording ? "stop" : "start"}
+          onClick={isRecording ? handleStopTracking : handleStartTracking}
+        />
+        <button
+          data-map-action="datacoin"
+          onClick={handleSubmitDataCoin}
+        />
+        <button
+          data-map-action="simulate"
+          onClick={() => {
+            if (!isSimulating) {
+              setSimulatedLocation(null);
+            }
+            setIsSimulating(!isSimulating);
+          }}
+        />
+        <button
+          data-map-action="direction-west"
+          onClick={() => {
+            simulationDirectionRef.current = Math.PI;
+            console.log("🚶 Changed direction: West ⬅️");
+          }}
+        />
+        <button
+          data-map-action="direction-north"
+          onClick={() => {
+            simulationDirectionRef.current = Math.PI / 2;
+            console.log("🚶 Changed direction: North ⬆️");
+          }}
+        />
+        <button
+          data-map-action="direction-east"
+          onClick={() => {
+            simulationDirectionRef.current = 0;
+            console.log("🚶 Changed direction: East ➡️");
+          }}
+        />
+        <button
+          data-map-action="direction-south"
+          onClick={() => {
+            simulationDirectionRef.current = (3 * Math.PI) / 2;
+            console.log("🚶 Changed direction: South ⬇️");
+          }}
+        />
       </div>
     </div>
   );
