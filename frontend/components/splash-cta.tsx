@@ -11,7 +11,7 @@ export function SplashCTA() {
       transition={{ duration: 0.6, delay: 0.2 }}
       className="w-full max-w-xs"
     >
-      <Link href="/run">
+      <Link href="/new/run">
         <button className="w-full neumorphic-button bg-accent text-foreground font-bold text-lg py-4 hover:shadow-xl transition-all">
           Start Running
         </button>
