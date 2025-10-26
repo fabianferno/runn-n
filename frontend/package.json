@@ -32,7 +32,20 @@
     "react-qr-code": "^2.0.18",
     "tailwind-merge": "^3.3.1",
     "viem": "^2.38.4",
-    "wagmi": "^2.18.2"
+    "wagmi": "^2.18.2",
+    "@emotion/is-prop-valid": "latest",
+    "@react-three/drei": "^10.7.6",
+    "@react-three/fiber": "^9.4.0",
+    "@react-three/rapier": "^2.1.0",
+    "@tailwindcss/postcss": "^4.1.16",
+    "@vercel/analytics": "latest",
+    "framer-motion": "latest",
+    "meshline": "^3.3.1",
+    "react-is": "^19.2.0",
+    "recharts": "latest",
+    "tailwindcss-animate": "^1.0.7",
+    "three": "^0.180.0",
+    "tw-animate-css": "latest"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

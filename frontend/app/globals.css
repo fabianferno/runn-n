@@ -4,86 +4,75 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Updated to dark theme with glassmorphism colors */
-  --background: oklch(0.08 0 0);
-  --foreground: oklch(0.95 0 0);
-  --card: oklch(0.12 0 0);
-  --card-foreground: oklch(0.95 0 0);
-  --popover: oklch(0.12 0 0);
-  --popover-foreground: oklch(0.95 0 0);
-  --primary: oklch(0.5 0.3 280);
-  --primary-foreground: oklch(0.95 0 0);
-  --secondary: oklch(0.45 0.25 200);
-  --secondary-foreground: oklch(0.95 0 0);
-  --muted: oklch(0.25 0 0);
-  --muted-foreground: oklch(0.65 0 0);
-  --accent: oklch(0.55 0.35 270);
-  --accent-foreground: oklch(0.95 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.95 0 0);
-  --border: oklch(0.2 0 0);
-  --input: oklch(0.15 0 0);
-  --ring: oklch(0.5 0.3 280);
-  --chart-1: oklch(0.6 0.3 280);
-  --chart-2: oklch(0.55 0.28 200);
-  --chart-3: oklch(0.5 0.25 150);
-  --chart-4: oklch(0.65 0.25 50);
-  --chart-5: oklch(0.58 0.28 320);
+  /* Updated background to pitch black */
+  --background: #1a1e31;
+  --foreground: #ffffff;
+  --card: #0f1419;
+  --card-foreground: #ffffff;
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: #9d4edd;
+  --primary-foreground: #ffffff;
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: #1a1f3a;
+  --muted-foreground: #8b92b3;
+  --accent: #ccff00;
+  --accent-foreground: #000000;
+  --destructive: #ff4444;
+  --destructive-foreground: #ffffff;
+  --border: #1f2540;
+  --input: #0f1419;
+  --ring: #9d4edd;
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
   --radius: 0.75rem;
-  --sidebar: oklch(0.1 0 0);
-  --sidebar-foreground: oklch(0.95 0 0);
-  --sidebar-primary: oklch(0.5 0.3 280);
-  --sidebar-primary-foreground: oklch(0.95 0 0);
-  --sidebar-accent: oklch(0.55 0.35 270);
-  --sidebar-accent-foreground: oklch(0.95 0 0);
-  --sidebar-border: oklch(0.2 0 0);
-  --sidebar-ring: oklch(0.5 0.3 280);
-
-  /* Added glassmorphism tokens */
-  --glass-bg: rgba(26, 26, 26, 0.7);
-  --glass-border: rgba(255, 255, 255, 0.1);
-  --glow-purple: oklch(0.5 0.3 280);
-  --glow-cyan: oklch(0.55 0.28 200);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
 }
 
 .dark {
-  /* Dark mode is the default theme */
-  --background: oklch(0.08 0 0);
-  --foreground: oklch(0.95 0 0);
-  --card: oklch(0.12 0 0);
-  --card-foreground: oklch(0.95 0 0);
-  --popover: oklch(0.12 0 0);
-  --popover-foreground: oklch(0.95 0 0);
-  --primary: oklch(0.5 0.3 280);
-  --primary-foreground: oklch(0.95 0 0);
-  --secondary: oklch(0.45 0.25 200);
-  --secondary-foreground: oklch(0.95 0 0);
-  --muted: oklch(0.25 0 0);
-  --muted-foreground: oklch(0.65 0 0);
-  --accent: oklch(0.55 0.35 270);
-  --accent-foreground: oklch(0.95 0 0);
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.95 0 0);
-  --border: oklch(0.2 0 0);
-  --input: oklch(0.15 0 0);
-  --ring: oklch(0.5 0.3 280);
-  --chart-1: oklch(0.6 0.3 280);
-  --chart-2: oklch(0.55 0.28 200);
-  --chart-3: oklch(0.5 0.25 150);
-  --chart-4: oklch(0.65 0.25 50);
-  --chart-5: oklch(0.58 0.28 320);
-  --sidebar: oklch(0.1 0 0);
-  --sidebar-foreground: oklch(0.95 0 0);
-  --sidebar-primary: oklch(0.5 0.3 280);
-  --sidebar-primary-foreground: oklch(0.95 0 0);
-  --sidebar-accent: oklch(0.55 0.35 270);
-  --sidebar-accent-foreground: oklch(0.95 0 0);
-  --sidebar-border: oklch(0.2 0 0);
-  --sidebar-ring: oklch(0.5 0.3 280);
-  --glass-bg: rgba(26, 26, 26, 0.7);
-  --glass-border: rgba(255, 255, 255, 0.1);
-  --glow-purple: oklch(0.5 0.3 280);
-  --glow-cyan: oklch(0.55 0.28 200);
+  --background: #000000;
+  --foreground: #ffffff;
+  --card: #0f1419;
+  --card-foreground: #ffffff;
+  --popover: oklch(0.145 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: #9d4edd;
+  --primary-foreground: #ffffff;
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: #1a1f3a;
+  --muted-foreground: #8b92b3;
+  --accent: #ccff00;
+  --accent-foreground: #000000;
+  --destructive: #ff4444;
+  --destructive-foreground: #ffffff;
+  --border: #1f2540;
+  --input: #0f1419;
+  --ring: #9d4edd;
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(0.269 0 0);
+  --sidebar-ring: oklch(0.439 0 0);
 }
 
 @theme inline {
@@ -134,162 +123,238 @@
   body {
     @apply bg-background text-foreground;
   }
+}
 
-  /* Add mobile-only viewport constraint */
-  html {
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    min-height: 100vh;
-    background: oklch(0.08 0 0);
+/* Bottom Navigation */
+.bottom-nav {
+  position: fixed !important;
+  bottom: 0;
+  left: 12;
+  right: 0;
+  z-index: 50 !important;
+  width: 95%;
+}
+
+/* Enhanced Authentic Neumorphic styles */
+.neumorphic {
+  @apply rounded-2xl transition-all duration-300 cursor-pointer;
+  background: linear-gradient(145deg, #1a1f3a, #0f1419);
+  box-shadow: 16px 16px 32px rgba(0, 0, 0, 0.8),
+    -8px -8px 16px rgba(255, 255, 255, 0.12),
+    inset 0 2px 0 rgba(255, 255, 255, 0.15), inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  position: relative;
+}
+
+.neumorphic::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    transparent 50%,
+    rgba(0, 0, 0, 0.1) 100%
+  );
+  pointer-events: none;
+}
+
+.neumorphic:hover {
+  background: linear-gradient(145deg, #1f2540, #141a2a);
+  box-shadow: 20px 20px 40px rgba(0, 0, 0, 0.9),
+    -10px -10px 20px rgba(255, 255, 255, 0.15),
+    inset 0 2px 0 rgba(255, 255, 255, 0.2), inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+  transform: translateY(-3px);
+}
+
+.neumorphic-inset {
+  @apply rounded-2xl transition-all duration-300;
+  background: linear-gradient(145deg, #0f1419, #1a1f3a);
+  box-shadow: inset 8px 8px 16px rgba(0, 0, 0, 0.9),
+    inset -4px -4px 8px rgba(255, 255, 255, 0.12),
+    0 0 0 1px rgba(255, 255, 255, 0.08), 0 2px 4px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  position: relative;
+}
+
+.neumorphic-inset::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    145deg,
+    rgba(0, 0, 0, 0.2) 0%,
+    transparent 50%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
+  pointer-events: none;
+}
+
+.neumorphic-inset:hover {
+  background: linear-gradient(145deg, #141a2a, #0f1419);
+  box-shadow: inset 10px 10px 20px rgba(0, 0, 0, 0.95),
+    inset -5px -5px 10px rgba(255, 255, 255, 0.15),
+    0 0 0 1px rgba(255, 255, 255, 0.1), 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.neumorphic-button {
+  @apply px-6 py-3 rounded-xl font-semibold transition-all duration-200 cursor-pointer;
+  background: linear-gradient(145deg, #1a1f3a, #0f1419);
+  box-shadow: 12px 12px 24px rgba(0, 0, 0, 0.7),
+    /* -6px -6px 12px rgba(255, 255, 255, 0.1), */ inset 0 2px 0
+      rgba(255, 255, 255, 0.12),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  position: relative;
+}
+
+.neumorphic-button::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: inherit;
+  /* background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    transparent 50%,
+    rgba(0, 0, 0, 0.08) 100%
+  ); */
+
+  pointer-events: none;
+}
+
+.neumorphic-button:hover {
+  background: linear-gradient(145deg, #1f2540, #141a2a);
+  box-shadow: 14px 14px 28px rgba(0, 0, 0, 0.8),
+    /* -7px -7px 14px rgba(255, 255, 255, 0.12), */ inset 0 2px 0
+      rgba(255, 255, 255, 0.15),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+  transform: translateY(-2px);
+}
+
+.neumorphic-button:active {
+  background: linear-gradient(145deg, #0f1419, #1a1f3a);
+  box-shadow: inset 6px 6px 12px rgba(0, 0, 0, 0.9),
+    inset -3px -3px 6px rgba(255, 255, 255, 0.12),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+  transform: translateY(0px);
+}
+
+/* Additional Neumorphic Variants */
+.neumorphic-card {
+  @apply rounded-3xl transition-all duration-300;
+  background: linear-gradient(145deg, #1a1f3a, #0f1419);
+  box-shadow: 16px 16px 32px rgba(0, 0, 0, 0.5),
+    -8px -8px 16px rgba(255, 255, 255, 0.06),
+    inset 0 2px 0 rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.neumorphic-card:hover {
+  background: linear-gradient(145deg, #1f2540, #141a2a);
+  box-shadow: 20px 20px 40px rgba(0, 0, 0, 0.6),
+    -10px -10px 20px rgba(255, 255, 255, 0.08),
+    inset 0 2px 0 rgba(255, 255, 255, 0.12);
+  transform: translateY(-3px);
+}
+
+.neumorphic-input {
+  @apply rounded-xl transition-all duration-300 focus:outline-none;
+  background: linear-gradient(145deg, #0f1419, #1a1f3a);
+  box-shadow: inset 4px 4px 8px rgba(0, 0, 0, 0.7),
+    inset -2px -2px 4px rgba(255, 255, 255, 0.08),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.neumorphic-input:focus {
+  background: linear-gradient(145deg, #141a2a, #0f1419);
+  box-shadow: inset 6px 6px 12px rgba(0, 0, 0, 0.8),
+    inset -3px -3px 6px rgba(255, 255, 255, 0.1),
+    0 0 0 2px rgba(157, 78, 221, 0.3);
+}
+
+.neumorphic-toggle {
+  @apply rounded-full transition-all duration-300 cursor-pointer;
+  background: linear-gradient(145deg, #1a1f3a, #0f1419);
+  box-shadow: 6px 6px 12px rgba(0, 0, 0, 0.5),
+    -3px -3px 6px rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.neumorphic-toggle.active {
+  background: linear-gradient(145deg, #0f1419, #1a1f3a);
+  box-shadow: inset 3px 3px 6px rgba(0, 0, 0, 0.7),
+    inset -1px -1px 3px rgba(255, 255, 255, 0.08);
+}
+
+.neumorphic-floating {
+  @apply rounded-2xl transition-all duration-500;
+  background: linear-gradient(145deg, #1a1f3a, #0f1419);
+  box-shadow: 20px 20px 40px rgba(0, 0, 0, 0.4),
+    -10px -10px 20px rgba(255, 255, 255, 0.05),
+    inset 0 2px 0 rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transform: translateY(-5px);
+}
+
+.neumorphic-floating:hover {
+  transform: translateY(-8px);
+  box-shadow: 25px 25px 50px rgba(0, 0, 0, 0.5),
+    -12px -12px 25px rgba(255, 255, 255, 0.07),
+    inset 0 2px 0 rgba(255, 255, 255, 0.15);
+}
+
+/* Subtle hexagon pattern */
+.hexagon-pattern {
+  background-image: linear-gradient(
+      30deg,
+      rgba(157, 78, 221, 0.03) 25%,
+      transparent 25%
+    ),
+    linear-gradient(150deg, rgba(157, 78, 221, 0.03) 25%, transparent 25%),
+    linear-gradient(30deg, rgba(157, 78, 221, 0.03) 75%, transparent 75%),
+    linear-gradient(150deg, rgba(157, 78, 221, 0.03) 75%, transparent 75%);
+  background-size: 40px 70px;
+  background-position: 0 0, 0 0, 20px 35px, 20px 35px;
+}
+
+/* Smooth animations */
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
   }
-
-  body {
-    width: 100%;
-    max-width: 430px;
-    height: 100vh;
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
-
-  /* Added smooth scrolling and animation keyframes */
-  html {
-    scroll-behavior: smooth;
+  50% {
+    transform: translateY(-8px);
   }
 }
 
-/* Added glassmorphism and animation utilities */
-@layer components {
-  .glass {
-    @apply backdrop-blur-md bg-white/10 border border-white/20 rounded-2xl;
+@keyframes pulse-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(204, 255, 0, 0.3);
   }
+  50% {
+    box-shadow: 0 0 0 8px rgba(204, 255, 0, 0);
+  }
+}
 
-  .glass-sm {
-    @apply backdrop-blur-md bg-white/5 border border-white/10 rounded-xl;
-  }
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
 
-  .glow-pulse {
-    animation: glow-pulse 3s ease-in-out infinite;
-  }
-
-  .glow-pulse-fast {
-    animation: glow-pulse 2s ease-in-out infinite;
-  }
-
-  @keyframes glow-pulse {
-    0%,
-    100% {
-      opacity: 0.8;
-      filter: drop-shadow(0 0 8px rgba(168, 85, 247, 0.3));
-    }
-    50% {
-      opacity: 1;
-      filter: drop-shadow(0 0 16px rgba(168, 85, 247, 0.6));
-    }
-  }
-
-  @keyframes slide-up {
-    from {
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  .animate-slide-up {
-    animation: slide-up 0.5s ease-out;
-  }
-
-  @keyframes shimmer {
-    0% {
-      background-position: -1000px 0;
-    }
-    100% {
-      background-position: 1000px 0;
-    }
-  }
-
-  .shimmer {
-    background: linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0.1) 25%,
-      rgba(255, 255, 255, 0.2) 50%,
-      rgba(255, 255, 255, 0.1) 75%
-    );
-    background-size: 1000px 100%;
-    animation: shimmer 2s infinite;
-  }
-
-  /* Added card hover animation */
-  .card-hover {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .card-hover:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 16px rgba(168, 85, 247, 0.15);
-  }
-
-  /* Added fade-in animation */
-  @keyframes fade-in {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-
-  .animate-fade-in {
-    animation: fade-in 0.6s ease-out;
-  }
-
-  /* Added scale-in animation for cards */
-  @keyframes scale-in {
-    from {
-      opacity: 0;
-      transform: scale(0.95);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1);
-    }
-  }
-
-  .animate-scale-in {
-    animation: scale-in 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  /* Added subtle bounce for interactive elements */
-  @keyframes subtle-bounce {
-    0%,
-    100% {
-      transform: translateY(0);
-    }
-    50% {
-      transform: translateY(-1px);
-    }
-  }
-
-  .animate-subtle-bounce {
-    animation: subtle-bounce 0.6s ease-in-out infinite;
-  }
-
-  /* Added color transition animation */
-  @keyframes color-shift {
-    0%,
-    100% {
-      opacity: 1;
-    }
-    50% {
-      opacity: 0.7;
-    }
-  }
-
-  .animate-color-shift {
-    animation: color-shift 2s ease-in-out infinite;
-  }
+.animate-pulse-glow {
+  animation: pulse-glow 2s infinite;
 }
