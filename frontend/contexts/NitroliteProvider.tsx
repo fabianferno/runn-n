@@ -51,8 +51,9 @@ const SESSION_DURATION = 3600; // 1 hour
 // App session constants
 // @ts-expect-error - RPCProtocolVersion is not defined
 const APP_PROTOCOL: RPCProtocolVersion = "NitroRPC/0.4";
-const partnerAddress = process.env.NEXT_PUBLIC_SERVER_WALLET;
-
+const serverWalletAddress = process.env.NEXT_PUBLIC_SERVER_WALLET;
+const DEFAULT_WEIGHTS = [100, 0];
+const DEFAULT_QUORUM = 100;
 interface NitroliteContextType {
     // WebSocket state
     wsStatus: WsStatus;
@@ -80,9 +81,13 @@ interface NitroliteContextType {
     messages: unknown[];
     isSendingMessage: boolean;
 
+    // Coordinates state
+    isSendingCoordinates: boolean;
+
     // Actions
     createAppSession: () => Promise<void>;
     sendMessage: (messageBody: string) => Promise<void>;
+    sendCoordinates: (x: number, y: number, payload: unknown) => Promise<void>;
     fetchBalances: () => Promise<void>;
     handleTransfer: (params: TransferRequestParams) => Promise<void>;
 }
@@ -127,6 +132,25 @@ export const NitroliteProvider: React.FC<NitroliteProviderProps> = ({ children }
     // Message state
     const [messages, setMessages] = useState<unknown[]>([]);
     const [isSendingMessage, setIsSendingMessage] = useState(false);
+
+    // Coordinates state
+    const [isSendingCoordinates, setIsSendingCoordinates] = useState(false);
+
+    // Store pending auth challenge for when walletClient becomes available
+    const [pendingAuthChallenge, setPendingAuthChallenge] = useState<AuthChallengeResponse | null>(null);
+
+    // Set up coordinates handler
+    useEffect(() => {
+        const coordinatesHandler = (data: unknown) => {
+            console.log("Coordinates handler received data:", data);
+            // User will write their code inside here
+            // TODO: Write temp to DB
+            // Then settle 
+        };
+
+        webSocketService.addCoordinatesListener(coordinatesHandler);
+        return () => webSocketService.removeCoordinatesListener(coordinatesHandler);
+    }, []);
 
     const { address: account } = useAccount();
     const { data: walletClient } = useWalletClient();
@@ -179,23 +203,11 @@ export const NitroliteProvider: React.FC<NitroliteProviderProps> = ({ children }
         }
     }, [account, sessionKey, wsStatus, isNitroliteAuthenticated, isNitroliteAuthAttempted]);
 
-    // Handle server messages
+    // Process pending auth challenge when walletClient becomes available
     useEffect(() => {
-        const handleMessage = async (data: unknown) => {
-            console.log("Recieved message: ", data)
-            const response = parseAnyRPCResponse(JSON.stringify(data as string));
-            console.log("Response:", response, walletClient, sessionKey, account, sessionExpireTimestamp);
-
-            // Handle auth challenge
-            if (
-                response.method === RPCMethod.AuthChallenge &&
-                walletClient &&
-                sessionKey &&
-                account &&
-                sessionExpireTimestamp
-            ) {
-                console.log("Auth Challenge Response:", response);
-                const challengeResponse = response as AuthChallengeResponse;
+        const processPendingAuthChallenge = async () => {
+            if (pendingAuthChallenge && walletClient && sessionKey && account && sessionExpireTimestamp) {
+                console.log("Processing pending auth challenge");
 
                 const authParams = {
                     scope: AUTH_SCOPE,
@@ -208,12 +220,56 @@ export const NitroliteProvider: React.FC<NitroliteProviderProps> = ({ children }
                 const eip712Signer = createEIP712AuthMessageSigner(walletClient, authParams, getAuthDomain());
 
                 try {
-                    const authVerifyPayload = await createAuthVerifyMessage(eip712Signer, challengeResponse);
+                    const authVerifyPayload = await createAuthVerifyMessage(eip712Signer, pendingAuthChallenge);
                     console.log("Auth Verify Payload:", authVerifyPayload);
                     webSocketService.send(authVerifyPayload);
+                    setPendingAuthChallenge(null); // Clear after processing
                 } catch (error) {
+                    console.error('Failed to process pending auth challenge:', error);
                     alert('Signature rejected. Please try again.');
                     setIsNitroliteAuthAttempted(false);
+                    setPendingAuthChallenge(null);
+                }
+            }
+        };
+
+        processPendingAuthChallenge();
+    }, [pendingAuthChallenge, walletClient, sessionKey, account, sessionExpireTimestamp]);
+
+    // Handle server messages
+    useEffect(() => {
+        const handleMessage = async (data: unknown) => {
+            console.log("Recieved message: ", data)
+            const response = parseAnyRPCResponse(JSON.stringify(data as string));
+
+            // Handle auth challenge
+            if (response.method === RPCMethod.AuthChallenge) {
+                const challengeResponse = response as AuthChallengeResponse;
+
+                // If walletClient is available, process immediately
+                if (walletClient && sessionKey && account && sessionExpireTimestamp) {
+                    const authParams = {
+                        scope: AUTH_SCOPE,
+                        application: walletClient.account?.address as `0x${string}`,
+                        participant: sessionKey.address as `0x${string}`,
+                        expire: sessionExpireTimestamp,
+                        allowances: [],
+                    };
+
+                    const eip712Signer = createEIP712AuthMessageSigner(walletClient, authParams, getAuthDomain());
+
+                    try {
+                        const authVerifyPayload = await createAuthVerifyMessage(eip712Signer, challengeResponse);
+                        console.log("Auth Verify Payload:", authVerifyPayload);
+                        webSocketService.send(authVerifyPayload);
+                    } catch (error) {
+                        alert('Signature rejected. Please try again.');
+                        setIsNitroliteAuthAttempted(false);
+                    }
+                } else {
+                    // Store the challenge for later processing
+                    console.log("WalletClient not available, storing auth challenge for later");
+                    setPendingAuthChallenge(challengeResponse);
                 }
             }
 
@@ -275,6 +331,11 @@ export const NitroliteProvider: React.FC<NitroliteProviderProps> = ({ children }
 
                 // Add message to our messages array
                 setMessages(prev => [...prev, messageResponse.params]);
+
+                // Reset coordinates sending state if this was a coordinates message
+                if (isSendingCoordinates) {
+                    setIsSendingCoordinates(false);
+                }
             }
 
             // Handle transfer responses
@@ -303,6 +364,9 @@ export const NitroliteProvider: React.FC<NitroliteProviderProps> = ({ children }
                 } else if (isSendingMessage) {
                     setIsSendingMessage(false);
                     alert(`Message sending failed: ${response.params.error}`);
+                } else if (isSendingCoordinates) {
+                    setIsSendingCoordinates(false);
+                    alert(`Coordinates sending failed: ${response.params.error}`);
                 } else {
                     // Other errors (like auth failures)
                     removeJWT();
@@ -315,7 +379,7 @@ export const NitroliteProvider: React.FC<NitroliteProviderProps> = ({ children }
 
         webSocketService.addMessageListener(handleMessage);
         return () => webSocketService.removeMessageListener(handleMessage);
-    }, [walletClient, sessionKey, sessionExpireTimestamp, account, isTransferring, isCreatingAppSession, isSendingMessage]);
+    }, [walletClient, sessionKey, sessionExpireTimestamp, account, isTransferring, isCreatingAppSession, isSendingMessage, isSendingCoordinates]);
 
     // Automatically fetch balances when user is authenticated
     useEffect(() => {
@@ -348,9 +412,9 @@ export const NitroliteProvider: React.FC<NitroliteProviderProps> = ({ children }
 
         const appDefinition: RPCAppDefinition = {
             protocol: APP_PROTOCOL,
-            participants: [account as `0x${string}`, partnerAddress as `0x${string}`],
-            weights: [0, 100], // Equal participation
-            quorum: 0, // Both participants must agree
+            participants: [account as `0x${string}`, serverWalletAddress as `0x${string}`],
+            weights: DEFAULT_WEIGHTS,
+            quorum: DEFAULT_QUORUM,
             challenge: 0,
             nonce: Date.now()
         };
@@ -359,12 +423,12 @@ export const NitroliteProvider: React.FC<NitroliteProviderProps> = ({ children }
             {
                 participant: account as `0x${string}`,
                 asset: 'QC',
-                amount: '100',
+                amount: '1',
             },
             {
-                participant: partnerAddress as `0x${string}`,
+                participant: serverWalletAddress as `0x${string}`,
                 asset: 'QC',
-                amount: '100',
+                amount: '0',
             },
         ];
 
@@ -403,12 +467,12 @@ export const NitroliteProvider: React.FC<NitroliteProviderProps> = ({ children }
                     {
                         participant: account as `0x${string}`,
                         asset: 'QC',
-                        amount: '100',
+                        amount: '1',
                     },
                     {
-                        participant: partnerAddress as `0x${string}`,
+                        participant: serverWalletAddress as `0x${string}`,
                         asset: 'QC',
-                        amount: '100',
+                        amount: '0',
                     },
                 ],
                 session_data: messageBody,
@@ -419,6 +483,50 @@ export const NitroliteProvider: React.FC<NitroliteProviderProps> = ({ children }
         } catch (error) {
             console.error('Failed to create message request:', error);
             setIsSendingMessage(false);
+        }
+    };
+
+    const sendCoordinates = async (x: number, y: number, payload: unknown) => {
+        if (!sessionKey || !appSessionId || isSendingCoordinates) {
+            console.error('Cannot send coordinates: missing requirements or already sending');
+            return;
+        }
+
+        setIsSendingCoordinates(true);
+
+        const sessionSigner = createECDSAMessageSigner(sessionKey.privateKey);
+
+        try {
+            let coordinatesData: { x: number; y: number;[key: string]: unknown } = { x, y };
+
+            if (typeof payload === 'object' && payload !== null) {
+                coordinatesData = { ...coordinatesData, ...payload as Record<string, unknown> };
+            }
+
+            const messagePayload = await createSubmitAppStateMessage(sessionSigner, {
+                app_session_id: appSessionId as `0x${string}`,
+                intent: RPCAppStateIntent.Operate,
+                version: 2,
+                allocations: [
+                    {
+                        participant: account as `0x${string}`,
+                        asset: 'QC',
+                        amount: '1',
+                    },
+                    {
+                        participant: serverWalletAddress as `0x${string}`,
+                        asset: 'QC',
+                        amount: '0',
+                    },
+                ],
+                session_data: JSON.stringify(coordinatesData),
+            });
+
+            console.log('Sending coordinates...', messagePayload);
+            webSocketService.send(messagePayload);
+        } catch (error) {
+            console.error('Failed to send coordinates:', error);
+            setIsSendingCoordinates(false);
         }
     };
 
@@ -491,9 +599,13 @@ export const NitroliteProvider: React.FC<NitroliteProviderProps> = ({ children }
         messages,
         isSendingMessage,
 
+        // Coordinates state
+        isSendingCoordinates,
+
         // Actions
         createAppSession,
         sendMessage,
+        sendCoordinates,
         fetchBalances,
         handleTransfer,
     };
