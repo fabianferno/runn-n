@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 import { GlassCard } from "@/components/glass-card";
-import { BottomNav } from "@/components/bottom-nav";
+import { BottomNav } from "@/components/bottom-nav1";
 import { CameraComponent } from "@/components/camera-component";
 import { LocationVerificationComponent } from "@/components/location-verification-component";
 import { ApiService } from "@/services/api.service";
@@ -14,8 +14,12 @@ import { useQuestManagement } from "@/hooks/useQuestManagement";
 export default function QuestPage() {
   const router = useRouter();
   const { address, isConnected } = useAccount();
-  const { mintDatacoin, isLoading: isMinting, error: mintError } = useMintDatacoin();
-  
+  const {
+    mintDatacoin,
+    isLoading: isMinting,
+    error: mintError,
+  } = useMintDatacoin();
+
   const {
     quests,
     selectedQuest,
@@ -43,23 +47,21 @@ export default function QuestPage() {
     fetchQuests();
   }, [fetchQuests]);
 
-
-
   const handleMintAll = async () => {
     if (!isConnected || !address) {
-      alert('Please connect your wallet first');
+      alert("Please connect your wallet first");
       return;
     }
 
     if (pendingCompletions.length === 0) {
-      alert('No pending completions to mint');
+      alert("No pending completions to mint");
       return;
     }
 
     try {
       // Group completions by dataCoinAddress to batch mint
       const groupedCompletions: { [key: string]: any[] } = {};
-      
+
       for (const completion of pendingCompletions) {
         const dataCoinAddress = completion.dataCoinAddress;
         if (!groupedCompletions[dataCoinAddress]) {
@@ -69,33 +71,47 @@ export default function QuestPage() {
       }
 
       // Mint tokens for each dataCoin
-      for (const [dataCoinAddress, completions] of Object.entries(groupedCompletions)) {
-        const totalAmount = completions.reduce((sum, c) => sum + (c.mintAmount || 0), 0);
-        
-        console.log(`Minting ${totalAmount} tokens to ${address} from ${dataCoinAddress} for ${completions.length} completions`);
-        
+      for (const [dataCoinAddress, completions] of Object.entries(
+        groupedCompletions
+      )) {
+        const totalAmount = completions.reduce(
+          (sum, c) => sum + (c.mintAmount || 0),
+          0
+        );
+
+        console.log(
+          `Minting ${totalAmount} tokens to ${address} from ${dataCoinAddress} for ${completions.length} completions`
+        );
+
         // Use the minting hook with the correct datacoin address
-        const result = await mintDatacoin(dataCoinAddress, address, totalAmount);
-        
+        const result = await mintDatacoin(
+          dataCoinAddress,
+          address,
+          totalAmount
+        );
+
         if (result) {
           // Mark all completions as minted
           for (const completion of completions) {
             try {
-              await ApiService.markCompletionAsMinted(completion._id || completion.id, result.txHash);
+              await ApiService.markCompletionAsMinted(
+                completion._id || completion.id,
+                result.txHash
+              );
             } catch (err) {
-              console.error('Error marking completion as minted:', err);
+              console.error("Error marking completion as minted:", err);
             }
           }
         }
       }
 
-      alert('All tokens minted successfully! 🎉');
-      
+      alert("All tokens minted successfully! 🎉");
+
       // Refresh pending completions
       fetchQuests();
     } catch (error) {
-      console.error('Error minting tokens:', error);
-      alert('Failed to mint tokens. Please try again.');
+      console.error("Error minting tokens:", error);
+      alert("Failed to mint tokens. Please try again.");
     }
   };
 
@@ -141,21 +157,21 @@ export default function QuestPage() {
         {/* Tabs */}
         <div className="flex gap-2 mb-6">
           <button
-            onClick={() => setActiveTab('available')}
+            onClick={() => setActiveTab("available")}
             className={`flex-1 px-4 py-2 rounded-lg transition-colors ${
-              activeTab === 'available'
-                ? 'bg-primary/20 text-primary font-semibold'
-                : 'bg-white/5 text-muted-foreground'
+              activeTab === "available"
+                ? "bg-primary/20 text-primary font-semibold"
+                : "bg-white/5 text-muted-foreground"
             }`}
           >
             Available
           </button>
           <button
-            onClick={() => setActiveTab('completed')}
+            onClick={() => setActiveTab("completed")}
             className={`flex-1 px-4 py-2 rounded-lg transition-colors relative ${
-              activeTab === 'completed'
-                ? 'bg-primary/20 text-primary font-semibold'
-                : 'bg-white/5 text-muted-foreground'
+              activeTab === "completed"
+                ? "bg-primary/20 text-primary font-semibold"
+                : "bg-white/5 text-muted-foreground"
             }`}
           >
             Completed
@@ -170,32 +186,36 @@ export default function QuestPage() {
         {/* Quest Stats */}
         <div className="grid grid-cols-3 gap-2 mb-6">
           <GlassCard className="p-3 text-center">
-            <div className="text-lg font-bold text-primary">{quests.length}</div>
+            <div className="text-lg font-bold text-primary">
+              {quests.length}
+            </div>
             <div className="text-xs text-muted-foreground">Total Quests</div>
           </GlassCard>
           <GlassCard className="p-3 text-center">
             <div className="text-lg font-bold text-orange-400">
-              {quests.filter(q => q.status === "in_progress").length}
+              {quests.filter((q) => q.status === "in_progress").length}
             </div>
             <div className="text-xs text-muted-foreground">In Progress</div>
           </GlassCard>
           <GlassCard className="p-3 text-center">
             <div className="text-lg font-bold text-green-400">
-              {quests.filter(q => q.status === "completed").length}
+              {quests.filter((q) => q.status === "completed").length}
             </div>
             <div className="text-xs text-muted-foreground">Completed</div>
           </GlassCard>
         </div>
 
         {/* Create DataCoin Button */}
-        {activeTab === 'available' && (
-          <GlassCard 
+        {activeTab === "available" && (
+          <GlassCard
             className="p-4 mb-6 cursor-pointer hover:bg-white/15 transition-all card-hover"
-            onClick={() => router.push('/quest/create')}
+            onClick={() => router.push("/quest/create")}
           >
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-semibold text-foreground mb-1">Create DataCoin</h3>
+                <h3 className="font-semibold text-foreground mb-1">
+                  Create DataCoin
+                </h3>
                 <p className="text-sm text-muted-foreground">
                   Deploy your own DataCoin and set up allocations
                 </p>
@@ -208,13 +228,16 @@ export default function QuestPage() {
         )}
 
         {/* Mint All Button for Completed Tab */}
-        {activeTab === 'completed' && pendingCompletions.length > 0 && (
+        {activeTab === "completed" && pendingCompletions.length > 0 && (
           <GlassCard className="p-4 mb-6 border-green-500/30">
             <div className="flex items-center justify-between mb-3">
               <div>
-                <h3 className="font-semibold text-foreground">Ready to Mint!</h3>
+                <h3 className="font-semibold text-foreground">
+                  Ready to Mint!
+                </h3>
                 <p className="text-sm text-muted-foreground">
-                  {pendingCompletions.length} quest{pendingCompletions.length !== 1 ? 's' : ''} completed
+                  {pendingCompletions.length} quest
+                  {pendingCompletions.length !== 1 ? "s" : ""} completed
                 </p>
               </div>
               <div className="text-2xl">🎁</div>
@@ -258,9 +281,7 @@ export default function QuestPage() {
             <h3 className="text-lg font-semibold text-red-400 mb-2">
               Error Loading Quests
             </h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              {error}
-            </p>
+            <p className="text-sm text-muted-foreground mb-4">{error}</p>
             <button
               onClick={() => window.location.reload()}
               className="px-4 py-2 bg-primary/80 text-white rounded-lg hover:bg-primary transition-colors"
@@ -284,58 +305,80 @@ export default function QuestPage() {
         )}
 
         {/* Quests List */}
-        {!isLoading && !error && activeTab === 'available' && quests.length > 0 && (
-          <div className="space-y-3">
-            <h2 className="text-lg font-bold text-foreground mb-3">Available Quests</h2>
-            {quests.map((quest, idx) => (
-            <GlassCard
-              key={quest.id}
-              className="p-4 cursor-pointer hover:bg-white/15 transition-all card-hover touch-manipulation"
-              style={{ animationDelay: `${idx * 0.1}s`, touchAction: 'manipulation' }}
-              onClick={() => handleQuestClick(quest)}
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <h3 className="font-semibold text-foreground">
-                      {quest.title}
-                    </h3>
-                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${getDifficultyColor(quest.difficulty)}`}>
-                      {quest.difficulty}
-                    </span>
-                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${getStatusColor(quest.status)}`}>
-                      {quest.status.replace('_', ' ')}
-                    </span>
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    {quest.description}
-                  </p>
-                  <div className="flex items-center gap-4 text-xs">
-                    <div className="flex items-center gap-1">
-                      <span className="text-muted-foreground">📍</span>
-                      <span className="text-foreground">{quest.location}</span>
+        {!isLoading &&
+          !error &&
+          activeTab === "available" &&
+          quests.length > 0 && (
+            <div className="space-y-3">
+              <h2 className="text-lg font-bold text-foreground mb-3">
+                Available Quests
+              </h2>
+              {quests.map((quest, idx) => (
+                <GlassCard
+                  key={quest.id}
+                  className="p-4 cursor-pointer hover:bg-white/15 transition-all card-hover touch-manipulation"
+                  style={{
+                    animationDelay: `${idx * 0.1}s`,
+                    touchAction: "manipulation",
+                  }}
+                  onClick={() => handleQuestClick(quest)}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className="font-semibold text-foreground">
+                          {quest.title}
+                        </h3>
+                        <span
+                          className={`text-xs px-2 py-1 rounded-full font-medium ${getDifficultyColor(
+                            quest.difficulty
+                          )}`}
+                        >
+                          {quest.difficulty}
+                        </span>
+                        <span
+                          className={`text-xs px-2 py-1 rounded-full font-medium ${getStatusColor(
+                            quest.status
+                          )}`}
+                        >
+                          {quest.status.replace("_", " ")}
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        {quest.description}
+                      </p>
+                      <div className="flex items-center gap-4 text-xs">
+                        <div className="flex items-center gap-1">
+                          <span className="text-muted-foreground">📍</span>
+                          <span className="text-foreground">
+                            {quest.location}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-muted-foreground">🎁</span>
+                          <span className="text-primary">{quest.reward}</span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <span className="text-muted-foreground">🎁</span>
-                      <span className="text-primary">{quest.reward}</span>
+                    <div className="text-right">
+                      <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                        <span className="text-primary text-sm font-bold">
+                          →
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className="text-right">
-                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                    <span className="text-primary text-sm font-bold">→</span>
-                  </div>
-                </div>
-              </div>
-            </GlassCard>
-            ))}
-          </div>
-        )}
+                </GlassCard>
+              ))}
+            </div>
+          )}
 
         {/* Completed Quests List */}
-        {!isLoading && !error && activeTab === 'completed' && (
+        {!isLoading && !error && activeTab === "completed" && (
           <div className="space-y-3">
-            <h2 className="text-lg font-bold text-foreground mb-3">Completed Quests</h2>
+            <h2 className="text-lg font-bold text-foreground mb-3">
+              Completed Quests
+            </h2>
             {pendingCompletions.length === 0 ? (
               <GlassCard className="p-6 text-center">
                 <div className="text-4xl mb-2">🎯</div>
@@ -348,7 +391,10 @@ export default function QuestPage() {
               </GlassCard>
             ) : (
               pendingCompletions.map((completion: any, idx: number) => (
-                <GlassCard key={completion._id || completion.id} className="p-4">
+                <GlassCard
+                  key={completion._id || completion.id}
+                  className="p-4"
+                >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <h3 className="font-semibold text-foreground mb-1">
@@ -357,14 +403,17 @@ export default function QuestPage() {
                       <p className="text-sm text-muted-foreground">
                         {completion.dataCoinAddress && (
                           <span className="font-mono text-xs break-all">
-                            {completion.dataCoinAddress.slice(0, 10)}...{completion.dataCoinAddress.slice(-8)}
+                            {completion.dataCoinAddress.slice(0, 10)}...
+                            {completion.dataCoinAddress.slice(-8)}
                           </span>
                         )}
                       </p>
                       <div className="mt-2 flex items-center gap-4 text-xs">
                         <div className="flex items-center gap-1">
                           <span className="text-muted-foreground">🎁</span>
-                          <span className="text-primary">{completion.mintAmount || 0} tokens</span>
+                          <span className="text-primary">
+                            {completion.mintAmount || 0} tokens
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -381,8 +430,6 @@ export default function QuestPage() {
         )}
       </div>
 
-  
-
       {/* Camera Component */}
       {showCamera && selectedQuest && (
         <CameraComponent
@@ -398,8 +445,14 @@ export default function QuestPage() {
 
       {/* Analysis Status */}
       {isAnalyzing && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" style={{ touchAction: 'manipulation' }}>
-          <GlassCard className="w-full max-w-md p-6 text-center" style={{ touchAction: 'manipulation' }}>
+        <div
+          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+          style={{ touchAction: "manipulation" }}
+        >
+          <GlassCard
+            className="w-full max-w-md p-6 text-center"
+            style={{ touchAction: "manipulation" }}
+          >
             <div className="text-4xl mb-4 animate-spin">🤖</div>
             <h3 className="text-xl font-bold text-foreground mb-2">
               Analyzing Image
@@ -413,8 +466,14 @@ export default function QuestPage() {
 
       {/* Analysis Error */}
       {analysisError && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" style={{ touchAction: 'manipulation' }}>
-          <GlassCard className="w-full max-w-md p-6" style={{ touchAction: 'manipulation' }}>
+        <div
+          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+          style={{ touchAction: "manipulation" }}
+        >
+          <GlassCard
+            className="w-full max-w-md p-6"
+            style={{ touchAction: "manipulation" }}
+          >
             <div className="text-center mb-4">
               <div className="text-4xl mb-2">❌</div>
               <h3 className="text-xl font-bold text-red-400 mb-2">

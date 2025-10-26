@@ -1,7 +1,7 @@
 "use client";
 
 import { MapComponent } from "@/components/map-component";
-import { BottomNav } from "@/components/bottom-nav";
+import { BottomNav } from "@/components/bottom-nav1";
 
 export default function MapPage() {
   return (
