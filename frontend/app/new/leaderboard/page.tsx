@@ -1,127 +1,130 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import Link from "next/link";
-import { ChevronLeft, Trophy, Flame, Medal } from "lucide-react";
+import { Trophy, Flame, Medal } from "lucide-react";
 
 interface LeaderboardUser {
-  id: string;
   rank: number;
-  address: string;
-  distance: number;
-  time: number;
-  runs: number;
-  xp: number;
-  isCurrentUser: boolean;
+  userId: string;
+  color: string;
+  stats: {
+    totalHexes: number;
+    totalRegions: number;
+    largestCapture: number;
+    totalCaptures: number;
+    lastActive: string;
+  };
+  activeRegions: string[];
+  activeRegionsCount: number;
+  totalPaths: number;
+  totalQuestsCompleted: number;
+  averageHexesPerCapture: number;
+  createdAt: string;
 }
 
-const LEADERBOARD_DATA: LeaderboardUser[] = [
-  {
-    id: "1",
-    rank: 1,
-    address: "0x1a2b3c4d5e6f7890abcdef1234567890abcdef12",
-    distance: 156.8,
-    time: 1240,
-    runs: 42,
-    xp: 2850,
-    isCurrentUser: false,
-  },
-  {
-    id: "2",
-    rank: 2,
-    address: "0x2b3c4d5e6f7890abcdef1234567890abcdef1234",
-    distance: 142.3,
-    time: 1120,
-    runs: 38,
-    xp: 2650,
-    isCurrentUser: false,
-  },
-  {
-    id: "3",
-    rank: 3,
-    address: "0x3c4d5e6f7890abcdef1234567890abcdef123456",
-    distance: 128.5,
-    time: 1050,
-    runs: 35,
-    xp: 2420,
-    isCurrentUser: false,
-  },
-  {
-    id: "4",
-    rank: 4,
-    address: "0x12w312",
-    distance: 45.2,
-    time: 380,
-    runs: 12,
-    xp: 890,
-    isCurrentUser: true,
-  },
-  {
-    id: "5",
-    rank: 5,
-    address: "0x4d5e6f7890abcdef1234567890abcdef12345678",
-    distance: 38.9,
-    time: 320,
-    runs: 10,
-    xp: 750,
-    isCurrentUser: false,
-  },
-  {
-    id: "6",
-    rank: 6,
-    address: "0x5e6f7890abcdef1234567890abcdef1234567890",
-    distance: 32.1,
-    time: 280,
-    runs: 8,
-    xp: 620,
-    isCurrentUser: false,
-  },
-  {
-    id: "7",
-    rank: 7,
-    address: "0x6f7890abcdef1234567890abcdef1234567890ab",
-    distance: 28.4,
-    time: 240,
-    runs: 7,
-    xp: 540,
-    isCurrentUser: false,
-  },
-];
+interface LeaderboardData {
+  leaderboard: LeaderboardUser[];
+  pagination: {
+    total: number;
+    limit: number;
+    skip: number;
+    hasMore: boolean;
+  };
+}
 
-type SortBy = "distance" | "time" | "runs" | "xp";
+type SortBy = "totalHexes" | "totalRegions" | "totalCaptures" | "totalPaths";
 
 export default function LeaderboardPage() {
-  const [sortBy, setSortBy] = useState<SortBy>("distance");
+  const [sortBy, setSortBy] = useState<SortBy>("totalHexes");
+  const [leaderboardData, setLeaderboardData] =
+    useState<LeaderboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [skip, setSkip] = useState(0);
+  const [limit] = useState(50);
+  const [currentUserId] = useState("0x12w312"); // This should come from auth context
 
-  // Helper function to truncate addresses
-  const truncateAddress = (address: string) => {
-    if (address.length <= 12) return address;
-    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  const fetchLeaderboard = async (skipValue: number) => {
+    try {
+      setLoading(true);
+      const response = await fetch(
+        `/api/leaderboard?limit=${limit}&skip=${skipValue}`
+      );
+      const data = await response.json();
+
+      if (data.success) {
+        setLeaderboardData(data.data);
+        setError(null);
+      } else {
+        setError(data.message || "Failed to fetch leaderboard");
+      }
+    } catch (err) {
+      setError("Failed to fetch leaderboard data");
+      console.error("Leaderboard fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const sortedData = [...LEADERBOARD_DATA].sort((a, b) => {
-    switch (sortBy) {
-      case "distance":
-        return b.distance - a.distance;
-      case "time":
-        return b.time - a.time;
-      case "runs":
-        return b.runs - a.runs;
-      case "xp":
-        return b.xp - a.xp;
-      default:
-        return 0;
+  useEffect(() => {
+    fetchLeaderboard(skip);
+  }, [skip]);
+
+  // Helper function to truncate user IDs
+  const truncateUserId = (userId: string) => {
+    if (userId.length <= 12) return userId;
+    return `${userId.slice(0, 6)}...${userId.slice(-4)}`;
+  };
+
+  const handleNextPage = () => {
+    if (leaderboardData?.pagination.hasMore) {
+      setSkip(skip + limit);
     }
-  });
+  };
 
-  const currentUserRank = sortedData.findIndex((u) => u.isCurrentUser) + 1;
+  const handlePrevPage = () => {
+    if (skip > 0) {
+      setSkip(Math.max(0, skip - limit));
+    }
+  };
 
-  const formatDistance = (km: number) => `${km.toFixed(1)}km`;
-  const formatTime = (minutes: number) => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+  const sortedData = leaderboardData
+    ? [...leaderboardData.leaderboard].sort((a, b) => {
+        switch (sortBy) {
+          case "totalHexes":
+            return b.stats.totalHexes - a.stats.totalHexes;
+          case "totalRegions":
+            return b.stats.totalRegions - a.stats.totalRegions;
+          case "totalCaptures":
+            return b.stats.totalCaptures - a.stats.totalCaptures;
+          case "totalPaths":
+            return b.totalPaths - a.totalPaths;
+          default:
+            return 0;
+        }
+      })
+    : [];
+
+  const currentUserRank =
+    sortedData.findIndex((u) => u.userId === currentUserId) + 1;
+  const currentUser = sortedData.find((u) => u.userId === currentUserId);
+
+  const formatTimeAgo = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+
+      if (diffMins < 60) return `${diffMins}m ago`;
+      if (diffHours < 24) return `${diffHours}h ago`;
+      return `${diffDays}d ago`;
+    } catch {
+      return dateString;
+    }
   };
 
   const getMedalIcon = (rank: number) => {
@@ -139,32 +142,49 @@ export default function LeaderboardPage() {
           <Trophy className="w-6 h-6" />
           Leaderboard
         </h1>
-        <div className="w-10" />
+        {leaderboardData && (
+          <div className="text-right">
+            <p className="text-sm font-semibold text-foreground">
+              {leaderboardData.pagination.total}
+            </p>
+            <p className="text-xs text-muted-foreground">Total Players</p>
+          </div>
+        )}
       </div>
 
       {/* Current user rank card */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mx-6 mt-6 neumorphic-inset p-4 border border-accent/30"
-      >
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-muted-foreground text-xs mb-1">Your Rank</div>
-            <div className="text-3xl font-bold text-accent">
-              #{currentUserRank}
+      {!loading && currentUser && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mx-6 mt-6 neumorphic-inset p-4 border border-accent/30"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-muted-foreground text-xs mb-1">
+                Your Rank
+              </div>
+              <div className="text-3xl font-bold text-accent">
+                #{currentUserRank}
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-muted-foreground text-xs mb-1">
+                Total Hexes
+              </div>
+              <div className="text-2xl font-bold text-accent">
+                {currentUser.stats.totalHexes.toLocaleString()}
+              </div>
             </div>
           </div>
-          <div className="text-right">
-            <div className="text-muted-foreground text-xs mb-1">Total XP</div>
-            <div className="text-2xl font-bold text-accent">890</div>
-          </div>
-        </div>
-      </motion.div>
+        </motion.div>
+      )}
 
       {/* Sort tabs */}
       <div className="flex gap-2 px-6 mt-6 mb-4 pb-2 ">
-        {(["distance", "time", "runs", "xp"] as const).map((sort) => (
+        {(
+          ["totalHexes", "totalRegions", "totalCaptures", "totalPaths"] as const
+        ).map((sort) => (
           <button
             key={sort}
             onClick={() => setSortBy(sort)}
@@ -174,78 +194,129 @@ export default function LeaderboardPage() {
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            {sort === "distance" && "Distance"}
-            {sort === "time" && "Time"}
-            {sort === "runs" && "Runs"}
-            {sort === "xp" && "XP"}
+            {sort === "totalHexes" && "Hexes"}
+            {sort === "totalRegions" && "Regions"}
+            {sort === "totalCaptures" && "Captures"}
+            {sort === "totalPaths" && "Paths"}
           </button>
         ))}
       </div>
 
       {/* Leaderboard list */}
       <div className="flex-1 px-6 space-y-3">
-        {sortedData.map((user, index) => {
-          const medal = getMedalIcon(index + 1);
-          return (
-            <motion.div
-              key={user.id}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.05 }}
-              className={`neumorphic-inset  p-4 flex items-center gap-4 ${
-                user.isCurrentUser ? "border border-accent/50" : ""
-              }`}
-            >
-              {/* Avatar Background */}
-              <div className="relative flex items-center justify-center w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
-                {/* DiceBear Glass Avatar as Background */}
-                <img
-                  src={`https://api.dicebear.com/9.x/glass/svg?seed=${user.address}&radius=0`}
-                  alt="User Avatar"
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
-              </div>
+        {loading && (
+          <div className="text-center py-12">
+            <div className="text-4xl mb-4 animate-spin">⏳</div>
+            <p className="text-muted-foreground">Loading leaderboard...</p>
+          </div>
+        )}
 
-              {/* User info */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="font-bold text-foreground truncate font-mono text-sm">
-                    {truncateAddress(user.address)}
-                  </h3>
-                  <span className="text-xs bg-accent/20 text-accent px-2 py-1 rounded whitespace-nowrap font-semibold">
-                    #{index + 1}
-                  </span>
-                  {user.isCurrentUser && (
-                    <span className="text-xs bg-accent/20 text-accent px-2 py-1 rounded whitespace-nowrap">
-                      You
+        {error && (
+          <div className="text-center py-12">
+            <div className="text-4xl mb-2">❌</div>
+            <p className="text-red-400 font-semibold mb-2">Error</p>
+            <p className="text-sm text-muted-foreground">{error}</p>
+          </div>
+        )}
+
+        {!loading &&
+          !error &&
+          sortedData.map((user, index) => {
+            const medal = getMedalIcon(index + 1);
+            return (
+              <motion.div
+                key={user.userId}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.05 }}
+                className={`neumorphic-inset p-4 flex items-center gap-4 ${
+                  user.userId === currentUserId ? "border border-accent/50" : ""
+                }`}
+              >
+                {/* Avatar Background */}
+                <div className="relative flex items-center justify-center w-12 h-12 rounded-lg overflow-hidden shrink-0">
+                  {/* DiceBear Glass Avatar as Background */}
+                  <img
+                    src={`https://api.dicebear.com/9.x/glass/svg?seed=${user.userId}&radius=0`}
+                    alt="User Avatar"
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                </div>
+
+                {/* User info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-bold text-foreground truncate font-mono text-sm">
+                      {truncateUserId(user.userId)}
+                    </h3>
+                    <span className="text-xs bg-accent/20 text-accent px-2 py-1 rounded whitespace-nowrap font-semibold">
+                      #{index + 1}
                     </span>
-                  )}
+                    {user.userId === currentUserId && (
+                      <span className="text-xs bg-accent/20 text-accent px-2 py-1 rounded whitespace-nowrap">
+                        You
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Flame className="w-3 h-3 text-orange-400" />
+                    <span>{user.stats.totalCaptures} captures</span>
+                    {user.totalQuestsCompleted > 0 && (
+                      <>
+                        <span>•</span>
+                        <span>✨ {user.totalQuestsCompleted} quests</span>
+                      </>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Flame className="w-3 h-3 text-orange-400" />
-                  <span>{user.runs} runs</span>
-                </div>
-              </div>
 
-              {/* Stats */}
-              <div className="text-right flex-shrink-0">
-                <div className="text-sm font-bold text-accent">
-                  {sortBy === "distance" && formatDistance(user.distance)}
-                  {sortBy === "time" && formatTime(user.time)}
-                  {sortBy === "runs" && user.runs}
-                  {sortBy === "xp" && user.xp}
+                {/* Stats */}
+                <div className="text-right shrink-0">
+                  <div className="text-sm font-bold text-accent">
+                    {sortBy === "totalHexes" &&
+                      user.stats.totalHexes.toLocaleString()}
+                    {sortBy === "totalRegions" && user.stats.totalRegions}
+                    {sortBy === "totalCaptures" && user.stats.totalCaptures}
+                    {sortBy === "totalPaths" && user.totalPaths}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {sortBy === "totalHexes" && "hexes"}
+                    {sortBy === "totalRegions" && "regions"}
+                    {sortBy === "totalCaptures" && "captures"}
+                    {sortBy === "totalPaths" && "paths"}
+                  </div>
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  {sortBy === "distance" && "distance"}
-                  {sortBy === "time" && "time"}
-                  {sortBy === "runs" && "runs"}
-                  {sortBy === "xp" && "XP"}
-                </div>
-              </div>
-            </motion.div>
-          );
-        })}
+              </motion.div>
+            );
+          })}
       </div>
+
+      {/* Pagination */}
+      {!loading && !error && leaderboardData && (
+        <div className="flex items-center justify-between px-6 py-4 border-t border-border">
+          <button
+            onClick={handlePrevPage}
+            disabled={skip === 0}
+            className="px-4 py-2 bg-primary/20 text-primary rounded-lg hover:bg-primary/30 transition-colors disabled:opacity-30 disabled:cursor-not-allowed font-medium"
+          >
+            ← Previous
+          </button>
+          <div className="text-center">
+            <p className="text-sm text-muted-foreground">
+              Showing {skip + 1} -{" "}
+              {Math.min(skip + limit, leaderboardData.pagination.total)} of{" "}
+              {leaderboardData.pagination.total}
+            </p>
+          </div>
+          <button
+            onClick={handleNextPage}
+            disabled={!leaderboardData.pagination.hasMore}
+            className="px-4 py-2 bg-primary/20 text-primary rounded-lg hover:bg-primary/30 transition-colors disabled:opacity-30 disabled:cursor-not-allowed font-medium"
+          >
+            Next →
+          </button>
+        </div>
+      )}
     </div>
   );
 }
