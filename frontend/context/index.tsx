@@ -6,6 +6,7 @@ import { createAppKit } from "@reown/appkit/react";
 import { mainnet, arbitrum, sepolia } from "@reown/appkit/networks";
 import React, { type ReactNode } from "react";
 import { cookieToInitialState, WagmiProvider, type Config } from "wagmi";
+import { NitroliteProvider } from "@/contexts/NitroliteProvider";
 
 // Set up queryClient
 const queryClient = new QueryClient();
@@ -51,7 +52,11 @@ function ContextProvider({
       config={wagmiAdapter.wagmiConfig as Config}
       initialState={initialState}
     >
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      <QueryClientProvider client={queryClient}>
+        <NitroliteProvider>
+          {children}
+        </NitroliteProvider>
+      </QueryClientProvider>
     </WagmiProvider>
   );
 }
