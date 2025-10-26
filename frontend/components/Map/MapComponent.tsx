@@ -65,6 +65,8 @@ export const MapComponent: React.FC<MapComponentProps> = ({
   // State
   const [elapsedTime, setElapsedTime] = useState(0);
   const [capturedHexes, setCapturedHexes] = useState(0);
+  const [totalUserHexes, setTotalUserHexes] = useState(0);
+  const [userRank, setUserRank] = useState<number | null>(null);
   const [lastDataCoinLocation, setLastDataCoinLocation] = useState<{
     latitude: number;
     longitude: number;
@@ -109,7 +111,7 @@ export const MapComponent: React.FC<MapComponentProps> = ({
           if (!prev) return prev;
 
           // Walk in a straight line in the current direction
-          const distance = 0.0015; // ~1.5 meters per step
+          const distance = 0.00015; // ~1.5 meters per step
           const direction = simulationDirectionRef.current;
           
           // Calculate new position
@@ -376,6 +378,38 @@ export const MapComponent: React.FC<MapComponentProps> = ({
     });
   }, [path, matchedPath]);
 
+  // Fetch user stats from leaderboard
+  const fetchUserStats = async () => {
+    try {
+      const response = await fetch('/api/leaderboard', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setTotalUserHexes(data.data.stats.totalHexes);
+          setUserRank(data.data.rank);
+          console.log('📊 User stats updated:', {
+            totalHexes: data.data.stats.totalHexes,
+            rank: data.data.rank,
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch user stats:', error);
+    }
+  };
+
+  // Fetch user stats on mount
+  useEffect(() => {
+    fetchUserStats();
+  }, [userId]);
+
   // Start tracking
   const handleStartTracking = () => {
     startTracking();
@@ -389,12 +423,39 @@ export const MapComponent: React.FC<MapComponentProps> = ({
   const handleStopTracking = async () => {
     const result = await stopRecording();
     stopTracking();
+    
+    const sessionHexCount = realtimeHexes.size;
+    const sessionDistance = distance;
+    const sessionDuration = elapsedTime;
 
     // Show stats even if path is short
     if (result.matchedPath.length < 2) {
+      // Send session end message
+      if (isAppSessionCreated) {
+        const sessionEndMessage = {
+          type: 'session_end',
+          userId,
+          userColor,
+          sessionStats: {
+            hexesCaptured: sessionHexCount,
+            distance: sessionDistance,
+            duration: sessionDuration,
+            timestamp: Date.now()
+          }
+        };
+        
+        await sendMessage(JSON.stringify(sessionEndMessage));
+        console.log('✅ Session end message sent');
+        
+        // Wait a bit for DB to update, then fetch new stats
+        setTimeout(() => {
+          fetchUserStats();
+        }, 1000);
+      }
+      
       alert(
         `Session complete!\n` +
-        `Hexes captured: ${realtimeHexes.size}\n` +
+        `Hexes captured: ${sessionHexCount}\n` +
         `Distance: ${(distance / 1000).toFixed(2)} km`
       );
       clearPath();
@@ -426,6 +487,27 @@ export const MapComponent: React.FC<MapComponentProps> = ({
         console.log('🟡 NITROLITE PATH SEND [v' + currentVersion + ']:', { type: 'path_complete', userId, pathPoints: pathCoordinates.length, distance });
         await sendMessage(JSON.stringify(pathMessage));
         console.log("🟡 NITROLITE PATH SENT [v" + currentVersion + "] SUCCESSFULLY → Next version ready:", messageVersionRef.current);
+        
+        // Send session end message
+        const sessionEndMessage = {
+          type: 'session_end',
+          userId,
+          userColor,
+          sessionStats: {
+            hexesCaptured: sessionHexCount,
+            distance: sessionDistance,
+            duration: sessionDuration,
+            timestamp: Date.now()
+          }
+        };
+        
+        await sendMessage(JSON.stringify(sessionEndMessage));
+        console.log('✅ Session end message sent');
+        
+        // Wait a bit for DB to update, then fetch new stats
+        setTimeout(() => {
+          fetchUserStats();
+        }, 1000);
 
         // Still check for loop bonus locally
         const response = await ApiService.capturePath({
@@ -931,14 +1013,14 @@ export const MapComponent: React.FC<MapComponentProps> = ({
                 marginBottom: "8px",
               }}
             >
-              📊 Path Data
+              📊 Session Stats
             </div>
             <div style={{ fontSize: "16px" }}>
               <div style={{ marginBottom: "8px" }}>
                 <strong>Path Points:</strong> {path.length}
               </div>
-              <div>
-                <strong style={{ color: "#10b981" }}>Hexes Captured:</strong>{" "}
+              <div style={{ marginBottom: "8px" }}>
+                <strong style={{ color: "#10b981" }}>This Session:</strong>{" "}
                 <span
                   style={{
                     fontSize: "20px",
@@ -946,9 +1028,36 @@ export const MapComponent: React.FC<MapComponentProps> = ({
                     color: "#10b981",
                   }}
                 >
-                  {capturedHexes}
+                  {realtimeHexes.size}
+                </span>{" "}
+                hexes
+              </div>
+              <div style={{ marginBottom: "8px" }}>
+                <strong style={{ color: "#3b82f6" }}>Total Hexes:</strong>{" "}
+                <span
+                  style={{
+                    fontSize: "18px",
+                    fontWeight: "bold",
+                    color: "#3b82f6",
+                  }}
+                >
+                  {totalUserHexes}
                 </span>
               </div>
+              {userRank && (
+                <div>
+                  <strong style={{ color: "#f59e0b" }}>Rank:</strong>{" "}
+                  <span
+                    style={{
+                      fontSize: "18px",
+                      fontWeight: "bold",
+                      color: "#f59e0b",
+                    }}
+                  >
+                    #{userRank}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -1010,8 +1119,9 @@ export const MapComponent: React.FC<MapComponentProps> = ({
         <div>Matched Path Points: {matchedPath.length}</div>
         <div>Distance: {distance.toFixed(2)}m</div>
         <div>Time: {elapsedTime}s</div>
-        <div>Total Captured Hexes: {capturedHexes}</div>
-        <div>Real-time Hexes (This Session): {realtimeHexes.size}</div>
+        <div style={{ color: "#10b981" }}>Session Hexes: {realtimeHexes.size}</div>
+        <div style={{ color: "#3b82f6" }}>Total User Hexes: {totalUserHexes}</div>
+        {userRank && <div style={{ color: "#f59e0b" }}>Rank: #{userRank}</div>}
         {currentLocation && (
           <>
             <div>Current Lat: {currentLocation.latitude.toFixed(6)}</div>

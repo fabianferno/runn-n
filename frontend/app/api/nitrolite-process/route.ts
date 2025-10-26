@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongo';
 import { RegionModel } from '@/lib/models/region.model';
+import { UserModel } from '@/lib/models/user.model';
 import { PathService } from '@/lib/services/path.service';
 import { H3Service } from '@/lib/services/h3.service';
 
@@ -23,7 +24,19 @@ interface PathCompleteMessage {
   timestamp: number;
 }
 
-type NitroliteMessage = HexCaptureMessage | PathCompleteMessage;
+interface SessionEndMessage {
+  type: 'session_end';
+  userId: string;
+  userColor: string;
+  sessionStats: {
+    hexesCaptured: number;
+    distance: number;
+    duration: number;
+    timestamp: number;
+  };
+}
+
+type NitroliteMessage = HexCaptureMessage | PathCompleteMessage | SessionEndMessage;
 
 /**
  * API Route to process Nitrolite messages server-side
@@ -42,6 +55,9 @@ export async function POST(request: NextRequest) {
         break;
       case 'path_complete':
         await processPathComplete(message);
+        break;
+      case 'session_end':
+        await processSessionEnd(message);
         break;
       default:
         return NextResponse.json(
@@ -139,6 +155,80 @@ async function processPathComplete(message: PathCompleteMessage) {
     return true;
   } catch (error) {
     console.error(`❌ ❌ ❌ FAILED TO STORE PATH IN DB ❌ ❌ ❌`);
+    console.error('Error details:', error);
+    throw error;
+  }
+}
+
+/**
+ * Process session end and update user stats
+ */
+async function processSessionEnd(message: SessionEndMessage) {
+  try {
+    console.log(`👤 Processing session end for user: ${message.userId}`);
+    
+    // Get or create user
+    let user = await UserModel.findById(message.userId);
+    
+    if (!user) {
+      console.log(`📦 Creating new user: ${message.userId}`);
+      user = new UserModel({
+        _id: message.userId,
+        color: message.userColor,
+        stats: {
+          totalHexes: 0,
+          totalRegions: 0,
+          largestCapture: 0,
+          totalCaptures: 0,
+          lastActive: Date.now(),
+        },
+        activeRegions: [],
+      });
+    } else {
+      // Update color if it changed
+      user.color = message.userColor;
+    }
+    
+    // Update user stats
+    user.stats.totalHexes += message.sessionStats.hexesCaptured;
+    user.stats.totalCaptures += 1;
+    user.stats.lastActive = message.sessionStats.timestamp;
+    
+    // Update largest capture if this session was bigger
+    if (message.sessionStats.hexesCaptured > user.stats.largestCapture) {
+      user.stats.largestCapture = message.sessionStats.hexesCaptured;
+    }
+    
+    // Check for region ownership - count hexes per region
+    const userRegions = await RegionModel.find({
+      'metadata.contestedBy': message.userId
+    });
+    
+    const ownedRegions: string[] = [];
+    for (const region of userRegions) {
+      const userHexCount = region.metadata.playerCounts.get(message.userId) || 0;
+      const totalHexes = region.metadata.hexCount;
+      
+      // Consider region "owned" if user has >50% of hexes
+      if (userHexCount > totalHexes * 0.5) {
+        ownedRegions.push(region._id);
+      }
+    }
+    
+    user.activeRegions = ownedRegions;
+    user.stats.totalRegions = ownedRegions.length;
+    
+    await user.save();
+    
+    console.log(`✅ ✅ ✅ USER STATS UPDATED: ${message.userId} ✅ ✅ ✅`);
+    console.log(`   📊 Total Hexes: ${user.stats.totalHexes} (+${message.sessionStats.hexesCaptured})`);
+    console.log(`   🏆 Total Regions Owned: ${user.stats.totalRegions}`);
+    console.log(`   ⭐ Largest Capture: ${user.stats.largestCapture}`);
+    console.log(`   🎯 Total Sessions: ${user.stats.totalCaptures}`);
+    
+    return true;
+  } catch (error) {
+    console.error(`❌ ❌ ❌ FAILED TO UPDATE USER STATS ❌ ❌ ❌`);
     console.error('Error details:', error);
     throw error;
   }

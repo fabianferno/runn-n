@@ -19,7 +19,18 @@ interface PathCompleteMessage {
   timestamp: number;
 }
 
-type NitroliteMessage = HexCaptureMessage | PathCompleteMessage;
+interface SessionEndMessage {
+  type: 'session_end';
+  userId: string;
+  sessionStats: {
+    hexesCaptured: number;
+    distance: number;
+    duration: number;
+    timestamp: number;
+  };
+}
+
+type NitroliteMessage = HexCaptureMessage | PathCompleteMessage | SessionEndMessage;
 
 export class NitroliteProcessor {
   private static listening = false;

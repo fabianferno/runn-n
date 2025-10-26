@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface IUser extends Document {
-  _id: string;
+  _id: string; // Wallet address
   color: string;
   stats: {
     totalHexes: number;

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/mongo";
-import { mockUsers } from "@/lib/data/mock-data";
+import { UserModel } from "@/lib/models/user.model";
 
 export async function GET(
   request: NextRequest,
@@ -10,7 +10,9 @@ export async function GET(
     await connectDB();
     
     const { userId } = params;
-    const user = mockUsers.get(userId);
+    
+    // userId is the wallet address
+    const user = await UserModel.findById(userId);
 
     if (!user) {
       return NextResponse.json(
