@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useWalletClient } from "wagmi";
+import { useAccount } from "wagmi";
 import { ApiService } from "@/services/api.service";
 
 interface User {
@@ -17,14 +17,14 @@ interface User {
 }
 
 export function useUserAuthentication() {
-  const { data: walletClient } = useWalletClient();
+  const { address, isConnected } = useAccount();
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const authenticateUser = async () => {
-      if (!walletClient) {
+      if (!isConnected || !address) {
         setUser(null);
         return;
       }
@@ -33,16 +33,8 @@ export function useUserAuthentication() {
         setIsAuthenticating(true);
         setError(null);
 
-        // Get wallet address
-        const addresses = await walletClient.requestAddresses();
-        const walletAddress = addresses[0];
-
-        if (!walletAddress) {
-          throw new Error("No wallet address found");
-        }
-
         // Authenticate with backend
-        const response = await ApiService.authenticateUser(walletAddress);
+        const response = await ApiService.authenticateUser(address);
         
         if (response.success) {
           setUser(response.user);
@@ -60,12 +52,12 @@ export function useUserAuthentication() {
     };
 
     authenticateUser();
-  }, [walletClient]);
+  }, [address, isConnected]);
 
   return {
     user,
     isAuthenticating,
     error,
-    walletAddress: user?._id || null,
+    walletAddress: address || null,
   };
 }
