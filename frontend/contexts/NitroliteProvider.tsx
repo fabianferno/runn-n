@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { webSocketService, type WsStatus } from '@/lib/websocket';
 import {
     BalanceUpdateResponse,
@@ -82,6 +82,7 @@ interface NitroliteContextType {
     sendMessage: (messageBody: string) => Promise<void>;
     fetchBalances: () => Promise<void>;
     handleTransfer: (params: TransferRequestParams) => Promise<void>;
+    reAuthenticate: () => Promise<void>;
 }
 
 const NitroliteContext = createContext<NitroliteContextType | undefined>(undefined);
@@ -151,7 +152,10 @@ export const NitroliteProvider: React.FC<NitroliteProviderProps> = ({ children }
         };
     }, []);
 
-    // Handle authentication
+    // Note: Auto-reconnection is now handled by the WebSocket service itself
+    // No need for manual reconnection logic here
+
+    // Handle initial authentication
     useEffect(() => {
         if (account && sessionKey && wsStatus === 'Connected' && !isNitroliteAuthenticated && !isNitroliteAuthAttempted) {
             setIsNitroliteAuthAttempted(true);
@@ -175,6 +179,89 @@ export const NitroliteProvider: React.FC<NitroliteProviderProps> = ({ children }
             });
         }
     }, [account, sessionKey, wsStatus, isNitroliteAuthenticated, isNitroliteAuthAttempted]);
+
+    // Handle re-authentication when WebSocket reconnects but user is not authenticated
+    useEffect(() => {
+        if (account && sessionKey && wsStatus === 'Connected' && !isNitroliteAuthenticated && isNitroliteAuthAttempted) {
+            console.log('WebSocket reconnected but user not authenticated, attempting re-authentication...');
+
+            // Reset auth attempt flag to allow new authentication
+            setIsNitroliteAuthAttempted(false);
+
+            // Small delay to ensure WebSocket is fully ready
+            setTimeout(() => {
+                setIsNitroliteAuthAttempted(true);
+
+                // Generate fresh timestamp for this auth attempt
+                const expireTimestamp = String(Math.floor(Date.now() / 1000) + SESSION_DURATION);
+                setSessionExpireTimestamp(expireTimestamp);
+
+                const authParams: AuthRequestParams = {
+                    address: account,
+                    session_key: sessionKey.address,
+                    app_name: APP_NAME,
+                    expire: expireTimestamp,
+                    scope: AUTH_SCOPE,
+                    application: account,
+                    allowances: [],
+                };
+
+                createAuthRequestMessage(authParams).then((payload) => {
+                    webSocketService.send(payload);
+                });
+            }, 1000); // 1 second delay to ensure WebSocket is ready
+        }
+    }, [wsStatus, account, sessionKey, isNitroliteAuthenticated, isNitroliteAuthAttempted]);
+
+    // Re-authentication function
+    const reAuthenticate = useCallback(async () => {
+        if (!account || !sessionKey || wsStatus !== 'Connected') {
+            console.error('Cannot re-authenticate: missing requirements or WebSocket not connected');
+            return;
+        }
+
+        console.log('Manually triggering re-authentication...');
+
+        // Reset authentication state
+        setIsNitroliteAuthenticated(false);
+        setIsNitroliteAuthAttempted(false);
+
+        // Generate fresh timestamp for this auth attempt
+        const expireTimestamp = String(Math.floor(Date.now() / 1000) + SESSION_DURATION);
+        setSessionExpireTimestamp(expireTimestamp);
+
+        const authParams: AuthRequestParams = {
+            address: account,
+            session_key: sessionKey.address,
+            app_name: APP_NAME,
+            expire: expireTimestamp,
+            scope: AUTH_SCOPE,
+            application: account,
+            allowances: [],
+        };
+
+        try {
+            const payload = await createAuthRequestMessage(authParams);
+            webSocketService.send(payload);
+            setIsNitroliteAuthAttempted(true);
+        } catch (error) {
+            console.error('Failed to create auth request:', error);
+        }
+    }, [account, sessionKey, wsStatus]);
+
+    // Check for session expiration and trigger re-authentication
+    useEffect(() => {
+        if (isNitroliteAuthenticated && sessionExpireTimestamp && wsStatus === 'Connected') {
+            const currentTime = Math.floor(Date.now() / 1000);
+            const expireTime = parseInt(sessionExpireTimestamp);
+
+            // If session expires in less than 5 minutes, trigger re-authentication
+            if (expireTime - currentTime < 300) {
+                console.log('Session expiring soon, triggering re-authentication...');
+                reAuthenticate();
+            }
+        }
+    }, [sessionExpireTimestamp, isNitroliteAuthenticated, wsStatus, reAuthenticate]);
 
     // Handle server messages
     useEffect(() => {
@@ -434,6 +521,7 @@ export const NitroliteProvider: React.FC<NitroliteProviderProps> = ({ children }
         }
     };
 
+
     const value: NitroliteContextType = {
         // WebSocket state
         wsStatus,
@@ -466,6 +554,7 @@ export const NitroliteProvider: React.FC<NitroliteProviderProps> = ({ children }
         sendMessage,
         fetchBalances,
         handleTransfer,
+        reAuthenticate,
     };
 
     return (
