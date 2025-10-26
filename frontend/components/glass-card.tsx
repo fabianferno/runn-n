@@ -21,13 +21,13 @@ export function GlassCard({
   style,
 }: GlassCardProps) {
   const baseStyles =
-    "backdrop-blur-md border rounded-2xl transition-all duration-300";
+    "rounded-2xl transition-all duration-300 relative";
 
   const variants = {
-    default: "bg-white/10 border-white/20",
-    sm: "bg-white/5 border-white/10 rounded-xl",
+    default: "neumorphic-card",
+    sm: "neumorphic-card rounded-xl",
     interactive:
-      "bg-white/10 border-white/20 hover:bg-white/15 hover:border-white/30 cursor-pointer active:scale-95",
+      "neumorphic cursor-pointer",
   };
 
   return (

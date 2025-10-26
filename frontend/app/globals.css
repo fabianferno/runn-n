@@ -206,15 +206,15 @@
 }
 
 .neumorphic-button {
-  @apply px-6 py-3 rounded-xl font-semibold transition-all duration-200 cursor-pointer;
+  @apply px-6 py-3 rounded-xl font-semibold transition-all duration-200 cursor-pointer relative;
   background: linear-gradient(145deg, #1a1f3a, #0f1419);
   box-shadow: 12px 12px 24px rgba(0, 0, 0, 0.7),
     /* -6px -6px 12px rgba(255, 255, 255, 0.1), */ inset 0 2px 0
       rgba(255, 255, 255, 0.12),
     inset 0 -1px 0 rgba(0, 0, 0, 0.15);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  position: relative;
 }
+
 
 .neumorphic-button::before {
   content: "";

@@ -51,6 +51,7 @@ const SESSION_DURATION = 3600; // 1 hour
 // App session constants
 // @ts-expect-error - RPCProtocolVersion is not defined
 const APP_PROTOCOL: RPCProtocolVersion = "NitroRPC/0.4";
+const serverWalletAddress = process.env.NEXT_PUBLIC_SERVER_WALLET || '';
 const DEFAULT_WEIGHTS = [100, 0];
 const DEFAULT_QUORUM = 100;
 
@@ -433,6 +434,19 @@ export const NitroliteProvider: React.FC<NitroliteProviderProps> = ({ children }
         //     },
         // ];
 
+        const allocations: RPCAppSessionAllocation[] = [
+            {
+                participant: account as `0x${string}`,
+                asset: 'QC',
+                amount: '1',
+            },
+            {
+                participant: serverWalletAddress as `0x${string}`,
+                asset: 'QC',
+                amount: '0',
+            },
+        ];
+
         const sessionSigner = createECDSAMessageSigner(sessionKey.privateKey);
 
         try {
@@ -481,6 +495,19 @@ export const NitroliteProvider: React.FC<NitroliteProviderProps> = ({ children }
                 //         amount: '0',
                 //     },
                 // ],
+
+                allocations: [
+                    {
+                        participant: account as `0x${string}`,
+                        asset: 'QC',
+                        amount: '1',
+                    },
+                    {
+                        participant: serverWalletAddress as `0x${string}`,
+                        asset: 'QC',
+                        amount: '0',
+                    },
+                ],
                 session_data: messageBody,
             });
 
@@ -533,6 +560,19 @@ export const NitroliteProvider: React.FC<NitroliteProviderProps> = ({ children }
                 //         amount: '0',
                 //     },
                 // ],
+
+                allocations: [
+                    {
+                        participant: account as `0x${string}`,
+                        asset: 'QC',
+                        amount: '1',
+                    },
+                    {
+                        participant: serverWalletAddress as `0x${string}`,
+                        asset: 'QC',
+                        amount: '0',
+                    },
+                ],
                 session_data: JSON.stringify(coordinatesData),
             });
 

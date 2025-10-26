@@ -466,7 +466,7 @@ export const MapComponent: React.FC<MapComponentProps> = ({
         }, 1000);
       }
       
-      alert(
+      console.log(
         `Session complete!\n` +
         `Hexes captured: ${sessionHexCount}\n` +
         `Distance: ${(distance / 1000).toFixed(2)} km`
@@ -535,7 +535,7 @@ export const MapComponent: React.FC<MapComponentProps> = ({
             gameRef.current?.setTerritory(hexId, userId, userColor);
           });
 
-          alert(
+          console.log(
             `🎉 LOOP BONUS!\n` +
               `Hexes: ${realtimeHexes.size}\n` +
               `Loop fill: ${response.interiorHexes}\n` +
@@ -545,7 +545,7 @@ export const MapComponent: React.FC<MapComponentProps> = ({
 
           setCapturedHexes((prev) => prev + response.interiorHexes);
         } else {
-          alert(
+          console.log(
             `Session complete!\n` +
               `Hexes: ${realtimeHexes.size}\n` +
               `Distance: ${(distance / 1000).toFixed(2)} km`
@@ -556,7 +556,7 @@ export const MapComponent: React.FC<MapComponentProps> = ({
         setRealtimeHexes(new Set());
       } catch (error) {
         console.error("Error:", error);
-        alert(
+        console.log(
           `Session complete!\n` +
           `Hexes captured: ${realtimeHexes.size}\n` +
           `Distance: ${(distance / 1000).toFixed(2)} km`
@@ -570,7 +570,7 @@ export const MapComponent: React.FC<MapComponentProps> = ({
   // Submit data coin
   const handleSubmitDataCoin = () => {
     if (!currentLocation) {
-      alert("No location data available");
+      console.log("No location data available");
       return;
     }
 
@@ -585,7 +585,7 @@ export const MapComponent: React.FC<MapComponentProps> = ({
       longitude: currentLocation.longitude,
     });
 
-    alert(
+    console.log(
       `Data Coin Submitted!\n` +
       `Lat: ${currentLocation.latitude.toFixed(6)}\n` +
       `Lng: ${currentLocation.longitude.toFixed(6)}`

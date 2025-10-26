@@ -38,6 +38,12 @@ export function CameraComponent({ quest, onPhotoTaken, onClose }: CameraComponen
     };
   }, []);
 
+  // Handle close button - stop camera
+  const handleClose = () => {
+    stopCamera();
+    onClose();
+  };
+
   const startCamera = async () => {
     try {
       // Check if getUserMedia is supported
@@ -50,36 +56,83 @@ export function CameraComponent({ quest, onPhotoTaken, onClose }: CameraComponen
       try {
         stream = await navigator.mediaDevices.getUserMedia({
           video: { 
-            facingMode: 'environment',
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
+            facingMode: 'environment'
           }
         });
+        console.log('Back camera accessed successfully');
       } catch (backCameraError) {
         console.log('Back camera not available, trying default camera');
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { 
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-          }
-        });
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: true
+          });
+          console.log('Default camera accessed successfully');
+        } catch (defaultError) {
+          console.error('Default camera also failed:', defaultError);
+          throw defaultError;
+        }
       }
       
+      console.log('Stream obtained:', stream);
+      console.log('Stream active:', stream.active);
+      console.log('Video tracks:', stream.getVideoTracks());
+      
       if (videoRef.current) {
+        console.log('Setting video srcObject');
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
         setIsStreaming(true);
         setError(null);
 
+        // Safety timeout - mark as ready after 5 seconds regardless
+        const timeoutId = setTimeout(() => {
+          console.log('Safety timeout - marking camera as ready');
+          setIsCameraReady(true);
+        }, 5000);
+
         // Wait for video to be ready
         videoRef.current.onloadedmetadata = () => {
+          clearTimeout(timeoutId); // Clear the safety timeout
           console.log('Camera metadata loaded, video ready');
-          setIsCameraReady(true);
+          console.log('Video dimensions:', videoRef.current?.videoWidth, 'x', videoRef.current?.videoHeight);
+          videoRef.current?.play().then(() => {
+            console.log('Video started playing');
+            setIsCameraReady(true);
+          }).catch(err => {
+            console.error('Error playing video:', err);
+            // Mark as ready even if play fails (stream might still work)
+            setTimeout(() => setIsCameraReady(true), 500);
+          });
         };
 
         videoRef.current.oncanplay = () => {
           console.log('Camera can play, fully ready');
         };
+
+        videoRef.current.onloadeddata = () => {
+          console.log('Camera data loaded');
+        };
+
+        videoRef.current.onplay = () => {
+          console.log('Video is playing');
+          clearTimeout(timeoutId); // Clear timeout if video starts playing
+          setIsCameraReady(true);
+        };
+
+        videoRef.current.onerror = (err) => {
+          console.error('Video element error:', err);
+        };
+
+        // Force play attempt
+        setTimeout(() => {
+          if (videoRef.current && !isCameraReady) {
+            videoRef.current.play().then(() => {
+              console.log('Forced play successful');
+              clearTimeout(timeoutId);
+              setIsCameraReady(true);
+            }).catch(console.error);
+          }
+        }, 100);
       }
     } catch (err) {
       console.error("Camera error:", err);
@@ -160,26 +213,41 @@ export function CameraComponent({ quest, onPhotoTaken, onClose }: CameraComponen
 
   return (
     <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" style={{ touchAction: 'manipulation' }}>
-      <GlassCard className="w-full max-w-md p-6" style={{ touchAction: 'manipulation' }}>
-        <div className="text-center mb-4">
-          <h3 className="text-xl font-bold text-foreground mb-2">
-            📸 {quest.title}
-          </h3>
-          <p className="text-sm text-muted-foreground">
-            Take a photo at: {quest.location}
-          </p>
+      <GlassCard className="w-full max-w-lg p-6 flex flex-col gap-4" style={{ touchAction: 'manipulation' }}>
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-xl font-bold text-foreground">
+              📸 {quest.title}
+            </h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              {quest.location}
+            </p>
+          </div>
+          <button
+            onClick={handleClose}
+            onTouchEnd={(e: React.TouchEvent) => {
+              e.preventDefault();
+              handleClose();
+            }}
+            className="neumorphic-button px-3 py-2 text-white"
+            style={{ touchAction: 'manipulation' }}
+          >
+            ✕
+          </button>
         </div>
 
+        {/* Error Message */}
         {error && (
-          <div className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg">
-            <p className="text-red-300 text-sm">{error}</p>
+          <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-xl">
+            <p className="text-red-300 text-sm mb-3">{error}</p>
             <button
               onClick={startCamera}
               onTouchEnd={(e: React.TouchEvent) => {
                 e.preventDefault();
                 startCamera();
               }}
-              className="mt-2 px-3 py-1 bg-red-500/20 text-red-300 rounded text-xs hover:bg-red-500/30 transition-colors min-h-[44px] touch-manipulation"
+              className="neumorphic-button text-red-300"
               style={{ touchAction: 'manipulation' }}
             >
               Retry Camera
@@ -187,181 +255,180 @@ export function CameraComponent({ quest, onPhotoTaken, onClose }: CameraComponen
           </div>
         )}
 
-        {!capturedPhoto ? (
-          <div className="space-y-4">
-            {/* Mode Toggle */}
-            <div className="flex bg-white/5 rounded-lg p-1">
-              <button
-                onClick={() => setShowUpload(false)}
-                onTouchEnd={(e: React.TouchEvent) => {
-                  e.preventDefault();
-                  setShowUpload(false);
-                }}
-                className={`flex-1 px-3 py-2 rounded text-sm transition-colors min-h-[44px] touch-manipulation ${
-                  !showUpload 
-                    ? 'bg-primary/80 text-white' 
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-                style={{ touchAction: 'manipulation' }}
-              >
-                📷 Camera
-              </button>
-              <button
-                onClick={() => setShowUpload(true)}
-                onTouchEnd={(e: React.TouchEvent) => {
-                  e.preventDefault();
-                  setShowUpload(true);
-                }}
-                className={`flex-1 px-3 py-2 rounded text-sm transition-colors min-h-[44px] touch-manipulation ${
-                  showUpload 
-                    ? 'bg-primary/80 text-white' 
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-                style={{ touchAction: 'manipulation' }}
-              >
-                📁 Upload
-              </button>
-            </div>
+        {/* Camera/Main Content */}
+        <div className="flex flex-col gap-3">
+          {!capturedPhoto ? (
+            <>
+              {/* Mode Toggle */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowUpload(false)}
+                  onTouchEnd={(e: React.TouchEvent) => {
+                    e.preventDefault();
+                    setShowUpload(false);
+                  }}
+                  className={`flex-1 neumorphic-button text-sm transition-colors min-h-[44px] touch-manipulation ${
+                    !showUpload 
+                      ? 'text-white' 
+                      : 'text-gray-400'
+                  }`}
+                  style={{ touchAction: 'manipulation' }}
+                >
+                  📷 Camera
+                </button>
+                <button
+                  onClick={() => setShowUpload(true)}
+                  onTouchEnd={(e: React.TouchEvent) => {
+                    e.preventDefault();
+                    setShowUpload(true);
+                  }}
+                  className={`flex-1 neumorphic-button text-sm transition-colors min-h-[44px] touch-manipulation ${
+                    showUpload 
+                      ? 'text-white' 
+                      : 'text-gray-400'
+                  }`}
+                  style={{ touchAction: 'manipulation' }}
+                >
+                  📁 Upload
+                </button>
+              </div>
 
-            {!showUpload ? (
-              <>
-                {/* Camera Preview */}
-                <div className="relative bg-black rounded-lg overflow-hidden">
-                  {isStreaming && isCameraReady ? (
+              {!showUpload ? (
+                <>
+                  {/* Camera Preview */}
+                  <div className="relative bg-black rounded-lg overflow-hidden">
                     <video
                       ref={videoRef}
                       autoPlay
                       playsInline
                       muted
-                      className="w-full h-64 object-cover"
+                      className={`w-full h-64 object-cover transition-opacity duration-300 ${!isCameraReady ? 'opacity-0' : 'opacity-100'}`}
                     />
-                  ) : (
-                    <div className="w-full h-64 flex items-center justify-center">
-                      <div className="text-white text-center">
-                        <div className="text-4xl mb-2">📷</div>
-                        <p>{isStreaming ? "Camera loading..." : "Starting camera..."}</p>
-                        {!isCameraReady && isStreaming && (
-                          <p className="text-xs mt-2 opacity-75">Please wait for camera to initialize</p>
-                        )}
+                    {!isCameraReady && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="text-white text-center">
+                          <div className="text-4xl mb-2 animate-pulse">📷</div>
+                          <p className="text-sm">{isStreaming ? "Loading..." : "Starting..."}</p>
+                        </div>
                       </div>
-                    </div>
-                  )}
-                  <canvas ref={canvasRef} className="hidden" />
-                </div>
+                    )}
+                    <canvas ref={canvasRef} className="hidden" />
+                  </div>
 
-                {/* Camera Controls */}
-                <div className="flex gap-3">
-                  <button
-                    onClick={onClose}
-                    onTouchEnd={(e: React.TouchEvent) => {
-                      e.preventDefault();
-                      onClose();
-                    }}
-                    className="flex-1 px-4 py-2 bg-gray-500/20 text-gray-300 rounded-lg hover:bg-gray-500/30 transition-colors min-h-[44px] touch-manipulation"
-                    style={{ touchAction: 'manipulation' }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={capturePhoto}
-                    onTouchEnd={(e: React.TouchEvent) => {
-                      e.preventDefault();
-                      capturePhoto();
-                    }}
-                    disabled={!isCameraReady}
-                    className="flex-1 px-4 py-2 bg-primary/80 text-white rounded-lg hover:bg-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] touch-manipulation"
-                    style={{ touchAction: 'manipulation' }}
-                  >
-                    {isCameraReady ? "Capture Photo" : "Camera Loading..."}
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                {/* Upload Area */}
-                <div className="border-2 border-dashed border-gray-500/30 rounded-lg p-6 text-center">
-                  <div className="text-4xl mb-3">📁</div>
-                  <p className="text-sm text-muted-foreground mb-3">
-                    Choose an image from your device
-                  </p>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="hidden"
-                  />
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    onTouchEnd={(e: React.TouchEvent) => {
-                      e.preventDefault();
-                      fileInputRef.current?.click();
-                    }}
-                    className="px-4 py-2 bg-primary/80 text-white rounded-lg hover:bg-primary transition-colors min-h-[44px] min-w-[120px] touch-manipulation"
-                    style={{ touchAction: 'manipulation' }}
-                  >
-                    Choose File
-                  </button>
-                </div>
+                  {/* Camera Controls */}
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleClose}
+                      onTouchEnd={(e: React.TouchEvent) => {
+                        e.preventDefault();
+                        handleClose();
+                      }}
+                      className="flex-1 neumorphic-button text-gray-300"
+                      style={{ touchAction: 'manipulation' }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={capturePhoto}
+                      onTouchEnd={(e: React.TouchEvent) => {
+                        e.preventDefault();
+                        capturePhoto();
+                      }}
+                      disabled={!isCameraReady}
+                      className="flex-1 neumorphic-button text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{ touchAction: 'manipulation' }}
+                    >
+                      {isCameraReady ? "📸 Capture" : "Loading..."}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Upload Area */}
+                  <div className="border-2 border-dashed border-gray-500/30 rounded-lg p-6 text-center">
+                    <div className="text-4xl mb-3">📁</div>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Choose an image from your device
+                    </p>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="hidden"
+                    />
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      onTouchEnd={(e: React.TouchEvent) => {
+                        e.preventDefault();
+                        fileInputRef.current?.click();
+                      }}
+                      className="neumorphic-button text-white min-h-[44px] min-w-[120px]"
+                      style={{ touchAction: 'manipulation' }}
+                    >
+                      Choose File
+                    </button>
+                  </div>
 
-                {/* Upload Controls */}
-                <div className="flex gap-3">
-                  <button
-                    onClick={onClose}
-                    onTouchEnd={(e: React.TouchEvent) => {
-                      e.preventDefault();
-                      onClose();
-                    }}
-                    className="flex-1 px-4 py-2 bg-gray-500/20 text-gray-300 rounded-lg hover:bg-gray-500/30 transition-colors min-h-[44px] touch-manipulation"
-                    style={{ touchAction: 'manipulation' }}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {/* Captured Photo Preview */}
-            <div className="relative bg-black rounded-lg overflow-hidden">
-              <img
-                src={capturedPhoto}
-                alt="Captured photo"
-                className="w-full h-64 object-cover"
-              />
+                  {/* Upload Controls */}
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleClose}
+                      onTouchEnd={(e: React.TouchEvent) => {
+                        e.preventDefault();
+                        handleClose();
+                      }}
+                      className="flex-1 neumorphic-button text-gray-300"
+                      style={{ touchAction: 'manipulation' }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </>
+              )}
+            </>
+          ) : (
+            <div className="space-y-3">
+              {/* Captured Photo Preview */}
+              <div className="relative bg-black rounded-lg overflow-hidden">
+                <img
+                  src={capturedPhoto}
+                  alt="Captured photo"
+                  className="w-full h-64 object-cover"
+                />
+              </div>
+
+              {/* Photo Actions */}
+              <div className="flex gap-3">
+                <button
+                  onClick={retakePhoto}
+                  onTouchEnd={(e: React.TouchEvent) => {
+                    e.preventDefault();
+                    retakePhoto();
+                  }}
+                  className="flex-1 neumorphic-button text-gray-300"
+                  style={{ touchAction: 'manipulation' }}
+                >
+                  🔄 Retake
+                </button>
+                <button
+                  onClick={confirmPhoto}
+                  onTouchEnd={(e: React.TouchEvent) => {
+                    e.preventDefault();
+                    confirmPhoto();
+                  }}
+                  className="flex-1 neumorphic-button text-white"
+                  style={{ touchAction: 'manipulation', background: 'rgba(34, 197, 94, 0.2)' }}
+                >
+                  ✓ Use Photo
+                </button>
+              </div>
             </div>
-
-            {/* Photo Actions */}
-            <div className="flex gap-3">
-              <button
-                onClick={retakePhoto}
-                onTouchEnd={(e: React.TouchEvent) => {
-                  e.preventDefault();
-                  retakePhoto();
-                }}
-                className="flex-1 px-4 py-2 bg-gray-500/20 text-gray-300 rounded-lg hover:bg-gray-500/30 transition-colors min-h-[44px] touch-manipulation"
-                style={{ touchAction: 'manipulation' }}
-              >
-                Retake
-              </button>
-              <button
-                onClick={confirmPhoto}
-                onTouchEnd={(e: React.TouchEvent) => {
-                  e.preventDefault();
-                  confirmPhoto();
-                }}
-                className="flex-1 px-4 py-2 bg-green-500/80 text-white rounded-lg hover:bg-green-500 transition-colors min-h-[44px] touch-manipulation"
-                style={{ touchAction: 'manipulation' }}
-              >
-                Use Photo
-              </button>
-            </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Quest Info */}
-        <div className="mt-4 p-3 bg-white/5 rounded-lg">
+        <div className="p-3 bg-white/5 rounded-lg">
           <div className="flex items-center justify-between text-xs">
             <span className="text-muted-foreground">Reward:</span>
             <span className="text-primary font-medium">{quest.reward}</span>

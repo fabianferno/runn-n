@@ -10,7 +10,7 @@ export default function NitroliteStatus() {
             <ConnectionStatus />
             <BalanceStatus />
             <AppSessionStatus />
-            <MessageInterface />
+         {/*   <MessageInterface /> */}
         </div>
     );
 }
