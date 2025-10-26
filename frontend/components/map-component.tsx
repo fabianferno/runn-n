@@ -29,6 +29,7 @@ interface MapComponentProps {
   onMapLoad?: (map: mapboxgl.Map) => void;
   onMapMove?: (lng: number, lat: number, zoom: number) => void;
   onLocationFound?: (lng: number, lat: number) => void;
+  onTerritoryGameReady?: (territoryGame: TerritoryGame) => void;
 }
 
 export const MapComponent: React.FC<MapComponentProps> = ({
@@ -52,6 +53,7 @@ export const MapComponent: React.FC<MapComponentProps> = ({
   onMapLoad,
   onMapMove,
   onLocationFound,
+  onTerritoryGameReady,
 }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
@@ -304,6 +306,11 @@ export const MapComponent: React.FC<MapComponentProps> = ({
             // fetchGridDetails(gridData.id);
           });
           setTerritoryGame(game);
+          
+          // Notify parent component that TerritoryGame is ready
+          if (onTerritoryGameReady) {
+            onTerritoryGameReady(game);
+          }
         }
 
         // Also try hiding labels after a short delay in case style isn't fully loaded

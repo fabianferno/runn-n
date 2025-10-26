@@ -30,6 +30,7 @@ export class TerritoryGame {
   private isGridVisible: boolean = false;
   private onGridClickCallback?: (data: GridClickData) => void;
   private currentPopup: mapboxgl.Popup | null = null; // Track current popup
+  private currentUser: string | null = null; // Track current user's wallet address
 
   // Drawing state
   private drawingPath: string[] = []; // Store hex IDs in drawing order
@@ -377,8 +378,8 @@ export class TerritoryGame {
         properties: {
           h3_id: hex,
           owner: owner,
-          color: this.players[owner].color,
-          name: this.players[owner].name,
+          color: this.getPlayerColor(owner),
+          name: this.getPlayerName(owner),
         },
         geometry: {
           type: "Polygon" as const,
@@ -806,6 +807,48 @@ export class TerritoryGame {
     if (source && source.type === "geojson") {
       (source as mapboxgl.GeoJSONSource).setData(this.generateGeoJSON());
     }
+  }
+
+  /**
+   * Add or update a player
+   */
+  addPlayer(playerId: string, player: Player) {
+    this.players[playerId] = player;
+  }
+
+  /**
+   * Set the current user
+   */
+  setCurrentUser(walletAddress: string) {
+    this.currentUser = walletAddress;
+  }
+
+  /**
+   * Get the current user
+   */
+  getCurrentUser(): string | null {
+    return this.currentUser;
+  }
+
+  /**
+   * Get player info safely
+   */
+  getPlayer(playerId: string): Player | null {
+    return this.players[playerId] || null;
+  }
+
+  /**
+   * Get player color safely
+   */
+  getPlayerColor(playerId: string): string {
+    return this.players[playerId]?.color || "#E8E8E8"; // Default neutral color
+  }
+
+  /**
+   * Get player name safely
+   */
+  getPlayerName(playerId: string): string {
+    return this.players[playerId]?.name || "Unknown Player";
   }
 
   getStats() {
