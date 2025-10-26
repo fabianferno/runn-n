@@ -52,6 +52,7 @@ export const useNitroliteAppSession = () => {
     isAppSessionCreated,
     isCreatingAppSession,
     createAppSession,
+    resetAppStateVersion,
   } = useNitroliteContext();
 
   return {
@@ -59,6 +60,7 @@ export const useNitroliteAppSession = () => {
     isAppSessionCreated,
     isCreatingAppSession,
     createAppSession,
+    resetAppStateVersion,
   };
 };
 

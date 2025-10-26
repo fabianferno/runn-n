@@ -51,9 +51,13 @@ const SESSION_DURATION = 3600; // 1 hour
 // App session constants
 // @ts-expect-error - RPCProtocolVersion is not defined
 const APP_PROTOCOL: RPCProtocolVersion = "NitroRPC/0.4";
-const serverWalletAddress = process.env.NEXT_PUBLIC_SERVER_WALLET;
 const DEFAULT_WEIGHTS = [100, 0];
 const DEFAULT_QUORUM = 100;
+
+// Validate server wallet address
+if (!process.env.NEXT_PUBLIC_SERVER_WALLET) {
+    console.warn('⚠️ NEXT_PUBLIC_SERVER_WALLET not set, using zero address as fallback');
+}
 interface NitroliteContextType {
     // WebSocket state
     wsStatus: WsStatus;
@@ -90,6 +94,7 @@ interface NitroliteContextType {
     sendCoordinates: (x: number, y: number, payload: unknown) => Promise<void>;
     fetchBalances: () => Promise<void>;
     handleTransfer: (params: TransferRequestParams) => Promise<void>;
+    resetAppStateVersion: () => void;
 }
 
 const NitroliteContext = createContext<NitroliteContextType | undefined>(undefined);
@@ -128,10 +133,10 @@ export const NitroliteProvider: React.FC<NitroliteProviderProps> = ({ children }
     const [appSessionId, setAppSessionId] = useState<string | null>(null);
     const [isAppSessionCreated, setIsAppSessionCreated] = useState(false);
     const [isCreatingAppSession, setIsCreatingAppSession] = useState(false);
-    const appStateVersionRef = useRef<number>(1);
+    const appStateVersionRef = useRef<number>(2);
 
     // Message state
-    const [messages, setMessages] = useState<unknown[]>([]);
+    const [messages, setMessages] = useState<unknown[]>([]);    
     const [isSendingMessage, setIsSendingMessage] = useState(false);
 
     // Coordinates state
@@ -316,7 +321,7 @@ export const NitroliteProvider: React.FC<NitroliteProviderProps> = ({ children }
                 setAppSessionId(appSessionResponse.params.appSessionId);
                 setIsAppSessionCreated(true);
                 setIsCreatingAppSession(false);
-                appStateVersionRef.current = 2; // Reset app state version for new session
+                appStateVersionRef.current = 2; // Reset app state version to 1 for new session
                 console.log('🟢 App State Version reset to 1 for new session');
             }
 
@@ -413,18 +418,20 @@ export const NitroliteProvider: React.FC<NitroliteProviderProps> = ({ children }
             nonce: Date.now()
         };
 
-        const allocations: RPCAppSessionAllocation[] = [
-            {
-                participant: account as `0x${string}`,
-                asset: 'QC',
-                amount: '1',
-            },
-            {
-                participant: serverWalletAddress as `0x${string}`,
-                asset: 'QC',
-                amount: '0',
-            },
-        ];
+        // Commented out - No token allocations required for now
+        const allocations: RPCAppSessionAllocation[] = [];
+        // const allocations: RPCAppSessionAllocation[] = [
+        //     {
+        //         participant: account as `0x${string}`,
+        //         asset: 'QC',
+        //         amount: '1',
+        //     },
+        //     {
+        //         participant: serverWalletAddress as `0x${string}`,
+        //         asset: 'QC',
+        //         amount: '0',
+        //     },
+        // ];
 
         const sessionSigner = createECDSAMessageSigner(sessionKey.privateKey);
 
@@ -459,19 +466,21 @@ export const NitroliteProvider: React.FC<NitroliteProviderProps> = ({ children }
             const messagePayload = await createSubmitAppStateMessage(sessionSigner, {
                 app_session_id: appSessionId as `0x${string}`,
                 intent: RPCAppStateIntent.Operate,
-                version: 2,
-                allocations: [
-                    {
-                        participant: account as `0x${string}`,
-                        asset: 'QC',
-                        amount: '1',
-                    },
-                    {
-                        participant: serverWalletAddress as `0x${string}`,
-                        asset: 'QC',
-                        amount: '0',
-                    },
-                ],
+                version: currentAppStateVersion, // Use tracked version
+                // Commented out - No token allocations required for now
+                allocations: [],
+                // allocations: [
+                //     {
+                //         participant: account as `0x${string}`,
+                //         asset: 'QC',
+                //         amount: '1',
+                //     },
+                //     {
+                //         participant: serverWalletAddress as `0x${string}`,
+                //         asset: 'QC',
+                //         amount: '0',
+                //     },
+                // ],
                 session_data: messageBody,
             });
 
@@ -497,6 +506,9 @@ export const NitroliteProvider: React.FC<NitroliteProviderProps> = ({ children }
         const sessionSigner = createECDSAMessageSigner(sessionKey.privateKey);
 
         try {
+            const currentAppStateVersion = appStateVersionRef.current;
+            appStateVersionRef.current += 1; // Increment immediately for next message
+            
             let coordinatesData: { x: number; y: number;[key: string]: unknown } = { x, y };
 
             if (typeof payload === 'object' && payload !== null) {
@@ -506,23 +518,25 @@ export const NitroliteProvider: React.FC<NitroliteProviderProps> = ({ children }
             const messagePayload = await createSubmitAppStateMessage(sessionSigner, {
                 app_session_id: appSessionId as `0x${string}`,
                 intent: RPCAppStateIntent.Operate,
-                version: 2,
-                allocations: [
-                    {
-                        participant: account as `0x${string}`,
-                        asset: 'QC',
-                        amount: '1',
-                    },
-                    {
-                        participant: serverWalletAddress as `0x${string}`,
-                        asset: 'QC',
-                        amount: '0',
-                    },
-                ],
+                version: currentAppStateVersion, // Use tracked version
+                // Commented out - No token allocations required for now
+                allocations: [],
+                // allocations: [
+                //     {
+                //         participant: account as `0x${string}`,
+                //         asset: 'QC',
+                //         amount: '1',
+                //     },
+                //     {
+                //         participant: serverWalletAddress as `0x${string}`,
+                //         asset: 'QC',
+                //         amount: '0',
+                //     },
+                // ],
                 session_data: JSON.stringify(coordinatesData),
             });
 
-            console.log('Sending coordinates...', messagePayload);
+            console.log('🟡 Sending coordinates via WebSocket [AppState v' + currentAppStateVersion + '] → Next: ' + appStateVersionRef.current);
             webSocketService.send(messagePayload);
         } catch (error) {
             console.error('Failed to send coordinates:', error);
@@ -572,6 +586,11 @@ export const NitroliteProvider: React.FC<NitroliteProviderProps> = ({ children }
         }
     };
 
+    const resetAppStateVersion = () => {
+        appStateVersionRef.current = 2;
+        console.log('🔄 App State Version manually reset to 1');
+    };
+
     const value: NitroliteContextType = {
         // WebSocket state
         wsStatus,
@@ -608,6 +627,7 @@ export const NitroliteProvider: React.FC<NitroliteProviderProps> = ({ children }
         sendCoordinates,
         fetchBalances,
         handleTransfer,
+        resetAppStateVersion,
     };
 
     return (

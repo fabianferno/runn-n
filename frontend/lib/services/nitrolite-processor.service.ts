@@ -1,8 +1,4 @@
 import { webSocketService } from '@/lib/websocket';
-import connectDB from '@/lib/mongo';
-import { RegionModel } from '@/lib/models/region.model';
-import { PathService } from '@/lib/services/path.service';
-import { H3Service } from '@/lib/services/h3.service';
 
 interface HexCaptureMessage {
   type: 'hex_capture';
@@ -27,134 +23,93 @@ type NitroliteMessage = HexCaptureMessage | PathCompleteMessage;
 
 export class NitroliteProcessor {
   private static listening = false;
+  private static listener: ((rawData: unknown) => Promise<void>) | null = null;
 
   /**
    * Start listening to Nitrolite messages and process them
    */
   static startProcessing() {
-    if (this.listening) return;
+    if (this.listening) {
+      console.log('⚠️ NitroliteProcessor: Already listening');
+      return;
+    }
     
     this.listening = true;
-    console.log('🎧 NitroliteProcessor: Started listening...');
+    console.log('🎧 NitroliteProcessor: Started listening for Nitrolite messages...');
+    console.log('🎧 Total message listeners registered');
 
-    // Hook into existing websocket.ts message listeners
-    webSocketService.addMessageListener(async (rawData: unknown) => {
+    // Create the listener function
+    this.listener = async (rawData: unknown) => {
+      console.log('🔔 NitroliteProcessor: Received raw data from websocket');
+      
       try {
         // Parse the Nitrolite RPC response
         const data = rawData as any;
         
+        console.log('🔍 NitroliteProcessor analyzing data:', {
+          hasMethod: !!data.method,
+          method: data.method,
+          hasParams: !!data.params,
+          hasSessionData: !!data.params?.session_data,
+        });
+        
         // Check if it's a SubmitAppState message (our coordinates!)
         if (data.method === 'SubmitAppState' && data.params?.session_data) {
+          console.log('📥 ✅ Found SubmitAppState with session_data!');
           const sessionData = JSON.parse(data.params.session_data);
           
-          console.log('📥 Received Nitrolite message:', sessionData.type);
+          console.log('📦 Parsed session data:', sessionData);
+          console.log('📥 Processing Nitrolite message type:', sessionData.type);
           
           // Process the message
           await this.processMessage(sessionData);
+        } else {
+          console.log('⏭️ Skipping non-SubmitAppState message:', data.method);
         }
       } catch (error) {
-        // Silently fail for non-message data (auth, balances, etc.)
-        // console.debug('Not a processable message:', error);
+        console.log('❌ NitroliteProcessor error:', error);
       }
-    });
+    };
+
+    // Hook into existing websocket.ts message listeners
+    webSocketService.addMessageListener(this.listener);
+    console.log('✅ NitroliteProcessor: Listener registered with webSocketService');
   }
 
   /**
-   * Process incoming Nitrolite message
+   * Process incoming Nitrolite message by sending to API route
    */
   private static async processMessage(message: NitroliteMessage) {
-    await connectDB();
-
-    switch (message.type) {
-      case 'hex_capture':
-        await this.processHexCapture(message);
-        break;
-      case 'path_complete':
-        await this.processPathComplete(message);
-        break;
-      default:
-        console.log('Unknown message type:', (message as any).type);
-    }
-  }
-
-  /**
-   * Process hex capture and save to MongoDB
-   */
-  private static async processHexCapture(message: HexCaptureMessage) {
     try {
-      console.log(`💾 Saving hex ${message.hexId} to MongoDB...`);
-
-      // Get region ID
-      const regionId = H3Service.getRegionForHex(message.hexId, 4);
+      console.log(`🚀 Sending message to API for processing:`, message.type);
       
-      // Get or create region
-      let region = await RegionModel.findById(regionId);
-
-      if (!region) {
-        region = new RegionModel({
-          _id: regionId,
-          territories: new Map(),
-          metadata: {
-            hexCount: 0,
-            lastUpdate: Date.now(),
-            playerCounts: new Map(),
-            contestedBy: [],
-          },
-        });
-      }
-
-      // Update territory
-      region.territories.set(message.hexId, {
-        user: message.userId,
-        color: message.color,
-        capturedAt: message.timestamp,
-        method: "click",
-      });
-
-      // Update metadata
-      region.metadata.hexCount = region.territories.size;
-      region.metadata.lastUpdate = Date.now();
-      
-      const currentCount = region.metadata.playerCounts.get(message.userId) || 0;
-      region.metadata.playerCounts.set(message.userId, currentCount + 1);
-
-      if (!region.metadata.contestedBy.includes(message.userId)) {
-        region.metadata.contestedBy.push(message.userId);
-      }
-
-      await region.save();
-      
-      console.log(`✅ Saved hex ${message.hexId} to MongoDB`);
-    } catch (error) {
-      console.error('❌ Error saving hex capture:', error);
-    }
-  }
-
-  /**
-   * Process complete path and save to MongoDB
-   */
-  private static async processPathComplete(message: PathCompleteMessage) {
-    try {
-      console.log(`💾 Processing path (${message.path.length} points)...`);
-
-      // Use existing PathService to process
-      const result = await PathService.processPath({
-        user: message.userId,
-        color: message.color,
-        path: message.path,
-        options: {
-          autoClose: true,
-          minLoopSize: 3,
+      // Send to server-side API route for processing
+      const response = await fetch('/api/nitrolite-process', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify(message),
       });
 
-      console.log(`✅ Path processed: ${result.hexesCaptured} hexes, type: ${result.pathType}`);
+      if (!response.ok) {
+        const error = await response.json();
+        console.error('❌ API processing failed:', error);
+        return;
+      }
+
+      const result = await response.json();
+      console.log('✅ API processing successful:', result);
     } catch (error) {
-      console.error('❌ Error processing path:', error);
+      console.error('❌ Error calling processing API:', error);
     }
   }
 
   static stopProcessing() {
+    if (this.listener) {
+      webSocketService.removeMessageListener(this.listener);
+      this.listener = null;
+    }
     this.listening = false;
     console.log('🔇 NitroliteProcessor: Stopped listening');
   }

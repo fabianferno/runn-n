@@ -40,6 +40,7 @@ export const MapComponent: React.FC<MapComponentProps> = ({
     timestamp: number;
   } | null>(null);
   const simulationIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const simulationDirectionRef = useRef<number>(0); // Direction in radians (0 = east, Math.PI/2 = north)
 
   // Hooks
   const { currentLocation: realLocation, startTracking, stopTracking } = useGeolocation();
@@ -59,7 +60,7 @@ export const MapComponent: React.FC<MapComponentProps> = ({
   
   // Nitrolite hooks
   const { sendMessage, isSendingMessage } = useNitroliteMessages();
-  const { isAppSessionCreated } = useNitroliteAppSession();
+  const { isAppSessionCreated, resetAppStateVersion } = useNitroliteAppSession();
 
   // State
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -87,12 +88,18 @@ export const MapComponent: React.FC<MapComponentProps> = ({
     if (isSimulating) {
       // Start from Chennai center if no location yet
       if (!simulatedLocation) {
+        // Pick a random initial direction (north, south, east, or west)
+        const directions = [0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2]; // E, N, W, S
+        simulationDirectionRef.current = directions[Math.floor(Math.random() * directions.length)];
+        
         setSimulatedLocation({
           latitude: 13.0827,
           longitude: 80.2707,
           accuracy: 10,
           timestamp: Date.now(),
         });
+        
+        console.log(`🚶 Starting simulation walking ${getDirectionName(simulationDirectionRef.current)}`);
       }
 
       // Update location every second to simulate walking
@@ -101,13 +108,19 @@ export const MapComponent: React.FC<MapComponentProps> = ({
         setSimulatedLocation((prev) => {
           if (!prev) return prev;
 
-          // Random walk pattern - move in slightly random direction
-          const angle = Math.random() * 2 * Math.PI;
-          const distance = 0.000015; // ~1.5 meters per step
+          // Walk in a straight line in the current direction
+          const distance = 0.0015; // ~1.5 meters per step
+          const direction = simulationDirectionRef.current;
+          
+          // Calculate new position
+          // For latitude (north-south): positive = north, negative = south
+          // For longitude (east-west): positive = east, negative = west
+          const latChange = Math.sin(direction) * distance;
+          const lngChange = Math.cos(direction) * distance;
           
           return {
-            latitude: prev.latitude + Math.cos(angle) * distance,
-            longitude: prev.longitude + Math.sin(angle) * distance,
+            latitude: prev.latitude + latChange,
+            longitude: prev.longitude + lngChange,
             accuracy: 10,
             timestamp: Date.now(),
           };
@@ -126,6 +139,15 @@ export const MapComponent: React.FC<MapComponentProps> = ({
       }
     };
   }, [isSimulating, simulatedLocation]);
+
+  // Helper function to get direction name
+  const getDirectionName = (radians: number) => {
+    const degree = (radians * 180) / Math.PI;
+    if (degree < 45 || degree >= 315) return "East ➡️";
+    if (degree >= 45 && degree < 135) return "North ⬆️";
+    if (degree >= 135 && degree < 225) return "West ⬅️";
+    return "South ⬇️";
+  };
 
   // Initialize map
   useEffect(() => {
@@ -359,8 +381,9 @@ export const MapComponent: React.FC<MapComponentProps> = ({
     startTracking();
     startRecording();
     setRealtimeHexes(new Set()); // Clear previous session hexes
-    messageVersionRef.current = 1; // Reset version for new session
-    console.log('🟢 New session started - Version reset to 1');
+    messageVersionRef.current = 1; // Reset message version for new session
+    resetAppStateVersion(); // Reset app state version for new session
+    console.log('🟢 New session started - Both versions reset to 1');
   };
   // Stop tracking and send via Nitrolite
   const handleStopTracking = async () => {
@@ -615,10 +638,16 @@ export const MapComponent: React.FC<MapComponentProps> = ({
 
           {/* Simulate Walking Button */}
           <button
-            onClick={() => setIsSimulating(!isSimulating)}
+            onClick={() => {
+              if (!isSimulating) {
+                setSimulatedLocation(null); // Reset location to pick new direction
+              }
+              setIsSimulating(!isSimulating);
+            }}
             style={{
               width: "100%",
               padding: "16px",
+              marginBottom: "12px",
               fontSize: "18px",
               fontWeight: "bold",
               backgroundColor: isSimulating ? "#f97316" : "#8b5cf6",
@@ -637,6 +666,96 @@ export const MapComponent: React.FC<MapComponentProps> = ({
           >
             {isSimulating ? "⏹ Stop Simulation" : "🚶 Simulate Walking"}
           </button>
+
+          {/* Direction Controls - only show when simulating */}
+          {isSimulating && (
+            <div style={{ marginBottom: "12px" }}>
+              <div style={{ 
+                fontSize: "12px", 
+                color: "#6b7280", 
+                marginBottom: "8px",
+                textAlign: "center"
+              }}>
+                Change Direction
+              </div>
+              <div style={{ 
+                display: "grid", 
+                gridTemplateColumns: "1fr 1fr 1fr",
+                gap: "8px"
+              }}>
+                <button
+                  onClick={() => {
+                    simulationDirectionRef.current = Math.PI; // West
+                    console.log("🚶 Changed direction: West ⬅️");
+                  }}
+                  style={{
+                    padding: "12px",
+                    backgroundColor: "#6366f1",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    fontSize: "20px",
+                  }}
+                >
+                  ⬅️
+                </button>
+                <button
+                  onClick={() => {
+                    simulationDirectionRef.current = Math.PI / 2; // North
+                    console.log("🚶 Changed direction: North ⬆️");
+                  }}
+                  style={{
+                    padding: "12px",
+                    backgroundColor: "#6366f1",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    fontSize: "20px",
+                  }}
+                >
+                  ⬆️
+                </button>
+                <button
+                  onClick={() => {
+                    simulationDirectionRef.current = 0; // East
+                    console.log("🚶 Changed direction: East ➡️");
+                  }}
+                  style={{
+                    padding: "12px",
+                    backgroundColor: "#6366f1",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    fontSize: "20px",
+                  }}
+                >
+                  ➡️
+                </button>
+                <div></div>
+                <button
+                  onClick={() => {
+                    simulationDirectionRef.current = (3 * Math.PI) / 2; // South
+                    console.log("🚶 Changed direction: South ⬇️");
+                  }}
+                  style={{
+                    padding: "12px",
+                    backgroundColor: "#6366f1",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    fontSize: "20px",
+                  }}
+                >
+                  ⬇️
+                </button>
+                <div></div>
+              </div>
+            </div>
+          )}
           <button
             onClick={async () => {
               try {
@@ -885,7 +1004,7 @@ export const MapComponent: React.FC<MapComponentProps> = ({
           === Debug Console ===
         </div>
         <div style={{ color: "#fbbf24" }}>🟡 Message Version: {messageVersionRef.current}</div>
-        <div>Simulation: {isSimulating ? "ACTIVE 🚶" : "INACTIVE"}</div>
+        <div>Simulation: {isSimulating ? `ACTIVE 🚶 ${getDirectionName(simulationDirectionRef.current)}` : "INACTIVE"}</div>
         <div>Recording: {isRecording ? "TRUE" : "FALSE"}</div>
         <div>Path Points: {path.length}</div>
         <div>Matched Path Points: {matchedPath.length}</div>

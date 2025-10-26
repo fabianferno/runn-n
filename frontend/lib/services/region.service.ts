@@ -20,10 +20,7 @@ export class RegionService {
     // Get regions in viewport
     const regionIds = H3Service.getViewportRegions(bounds, resolution, 4);
 
-    console.log(
-      `🔍 Loading ${regionIds.length} regions from MongoDB for viewport`
-    );
-    console.log(`Region IDs:`, regionIds);
+   
 
     // Fetch regions from MongoDB
     const regionDocs = await RegionModel.find({

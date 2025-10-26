@@ -22,7 +22,7 @@ export class ApiService {
     const boundsStr = `${bounds.west},${bounds.south},${bounds.east},${bounds.north}`;
     const url = `${API_BASE_URL}/territories/viewport?bounds=${boundsStr}&resolution=${resolution}`;
 
-    console.log("🌐 Fetching from:", url);
+
 
     const response = await fetch(url);
 
@@ -31,7 +31,7 @@ export class ApiService {
     }
 
     const data = await response.json();
-    console.log("📥 Raw API response:", data);
+
 
     return data;
   }
