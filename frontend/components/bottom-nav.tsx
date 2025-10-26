@@ -6,17 +6,17 @@ import { motion } from "framer-motion";
 import { Goal, Zap, Trophy, TrendingUp, User } from "lucide-react";
 
 const navItems = [
-  { href: "/quests", icon: Goal, label: "Quests", id: "quests" },
+  { href: "/new/quests", icon: Goal, label: "Quests", id: "quests" },
   {
-    href: "/leaderboard",
+    href: "/new/leaderboard",
     icon: Trophy,
     label: "Leaderboard",
     id: "leaderboard",
   },
-  { href: "/run", icon: Zap, label: "Run", id: "run" },
+  { href: "/new/run", icon: Zap, label: "Run", id: "run" },
 
-  { href: "/stats", icon: TrendingUp, label: "Stats", id: "stats" },
-  { href: "/profile", icon: User, label: "Profile", id: "profile" },
+  { href: "/new/stats", icon: TrendingUp, label: "Stats", id: "stats" },
+  { href: "/new/profile", icon: User, label: "Profile", id: "profile" },
 ];
 
 export function BottomNav() {
