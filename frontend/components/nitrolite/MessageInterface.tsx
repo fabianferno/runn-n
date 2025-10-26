@@ -134,7 +134,7 @@ export const MessageInterface: React.FC = () => {
             </div>
 
             {/* Messages Display */}
-            <div className="max-h-60 overflow-y-auto border rounded p-3 bg-gray-50">
+            <div className="max-h-60 overflow-y-auto border rounded p-3">
                 <h4 className="font-semibold mb-2">Messages:</h4>
                 {messages.length === 0 ? (
                     <div className="text-gray-500 text-sm">No messages yet</div>
