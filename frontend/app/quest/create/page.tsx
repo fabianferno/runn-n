@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { GlassCard } from "@/components/glass-card";
-import { BottomNav } from "@/components/bottom-nav1";
+import { motion } from "framer-motion";
 import { useAccount, useChainId } from "wagmi";
 import { QuestFormData, DEFAULT_FORM_DATA } from "@/types/quest";
 import { useDataCoinCreation } from "@/hooks/useDataCoinCreation";
@@ -54,29 +53,36 @@ export default function CreateQuestPage() {
   };
 
   return (
-    <main className="min-h-screen bg-background pb-24">
-      <div className="top-0 z-20 pt-4 px-4 pb-4 bg-background animate-fade-in">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Create Quest</h1>
-            <p className="text-sm text-muted-foreground">
-              Create quest • Set difficulty • Lock collateral
-            </p>
-          </div>
-          <div className="w-10 h-10 rounded-full bg-primary animate-subtle-bounce" />
+    <div className="min-h-screen w-full bg-background flex flex-col pb-24">
+      {/* Header */}
+      <div className="flex items-center justify-between p-6 border-b border-border">
+        <div>
+          <h1 className="text-2xl font-bold text-accent">Create Quest</h1>
+          <p className="text-xs text-muted-foreground mt-1">
+            Create quest • Set difficulty • Lock collateral
+          </p>
         </div>
+        <div className="w-10 h-10 rounded-full bg-accent/20" />
+      </div>
 
+      <div className="flex-1 px-6 space-y-4 mt-6">
         {/* Wallet Status */}
-        <GlassCard className="p-4 mb-6">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="neumorphic-inset p-4"
+        >
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-semibold text-foreground">Wallet Status</h3>
+              <h3 className="font-semibold text-foreground mb-1">
+                Wallet Status
+              </h3>
               <p className="text-sm text-muted-foreground">
                 {isConnected
                   ? `Connected: ${address?.slice(0, 6)}...${address?.slice(-4)}`
                   : "Not connected"}
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground mt-1">
                 Chain ID: {chainId}{" "}
                 {chainId === 11155111
                   ? "(Sepolia ✓)"
@@ -91,10 +97,15 @@ export default function CreateQuestPage() {
               }`}
             />
           </div>
-        </GlassCard>
+        </motion.div>
 
         {/* Quest Information */}
-        <GlassCard className="p-4 mb-6">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="neumorphic-inset p-4"
+        >
           <h3 className="font-semibold text-foreground mb-3">
             Quest Information
           </h3>
@@ -107,7 +118,7 @@ export default function CreateQuestPage() {
                 type="text"
                 value={formData.questName}
                 onChange={(e) => handleInputChange("questName", e.target.value)}
-                className="w-full px-3 py-2 bg-background/50 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-3 py-2 bg-background/50 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent"
                 placeholder="Enter quest name"
               />
             </div>
@@ -120,7 +131,7 @@ export default function CreateQuestPage() {
                 onChange={(e) =>
                   handleInputChange("questDescription", e.target.value)
                 }
-                className="w-full px-3 py-2 bg-background/50 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary h-24 resize-none"
+                className="w-full px-3 py-2 bg-background/50 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent h-24 resize-none"
                 placeholder="Describe your quest (this will be used for AI analysis)"
               />
             </div>
@@ -133,7 +144,7 @@ export default function CreateQuestPage() {
                 onChange={(e) =>
                   handleInputChange("difficulty", e.target.value)
                 }
-                className="w-full px-3 py-2 bg-background/50 border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-3 py-2 bg-background/50 border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
               >
                 <option value="easy">Easy</option>
                 <option value="medium">Medium</option>
@@ -151,7 +162,7 @@ export default function CreateQuestPage() {
                 onChange={(e) =>
                   handleInputChange("lockAmount", Number(e.target.value))
                 }
-                className="w-full px-3 py-2 bg-background/50 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-3 py-2 bg-background/50 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent"
                 placeholder="5"
                 min="1"
                 step="0.1"
@@ -161,10 +172,15 @@ export default function CreateQuestPage() {
               </p>
             </div>
           </div>
-        </GlassCard>
+        </motion.div>
 
-        {/* DataCoin Configuration - Hidden (using defaults) */}
-        <GlassCard className="p-4 mb-6">
+        {/* DataCoin Configuration */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="neumorphic-inset p-4"
+        >
           <h3 className="font-semibold text-foreground mb-3">
             DataCoin Configuration
           </h3>
@@ -179,11 +195,15 @@ export default function CreateQuestPage() {
               customized in advanced mode.
             </p>
           </div>
-        </GlassCard>
+        </motion.div>
 
         {/* Creation Status */}
         {(isCreating || isPending || isConfirming) && (
-          <GlassCard className="p-4 mb-6">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="neumorphic-inset p-4"
+          >
             <div className="text-center">
               <div className="text-4xl mb-4 animate-spin">⏳</div>
               <h3 className="text-xl font-bold text-foreground mb-2">
@@ -244,12 +264,16 @@ export default function CreateQuestPage() {
                 </p>
               )}
             </div>
-          </GlassCard>
+          </motion.div>
         )}
 
         {/* Error Display */}
         {error && (
-          <GlassCard className="p-4 mb-6 border-red-500/20">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="neumorphic-inset p-4 border border-red-500/20"
+          >
             <div className="text-center">
               <div className="text-4xl mb-2">❌</div>
               <h3 className="text-xl font-bold text-red-400 mb-2">
@@ -257,12 +281,16 @@ export default function CreateQuestPage() {
               </h3>
               <p className="text-sm text-muted-foreground">{error}</p>
             </div>
-          </GlassCard>
+          </motion.div>
         )}
 
         {/* Success Display */}
         {success && (
-          <GlassCard className="p-4 mb-6 border-green-500/20">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="neumorphic-inset p-4 border border-green-500/20"
+          >
             <div className="text-center">
               <div className="text-4xl mb-2">🎉</div>
               <h3 className="text-xl font-bold text-green-400 mb-2">
@@ -317,31 +345,18 @@ export default function CreateQuestPage() {
                 Transaction: {creationHash}
               </p>
             </div>
-          </GlassCard>
+          </motion.div>
         )}
-
-        {/* Create Button */}
-        <GlassCard className="p-4">
-          <button
-            onClick={createQuest}
-            disabled={!isConnected || isCreating || isPending || isConfirming}
-            className="w-full px-6 py-4 bg-primary/80 text-white rounded-lg hover:bg-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold mb-3"
-          >
-            {!isConnected
-              ? "Connect Wallet to Create Quest"
-              : isCreating || isPending || isConfirming
-              ? "Creating Quest..."
-              : success
-              ? "Quest Created Successfully!"
-              : "Create Quest"}
-          </button>
-        </GlassCard>
 
         {/* Transaction Hash Display */}
         {(approvalHash || creationHash) &&
           approvalHash !== "pending" &&
           creationHash !== "pending" && (
-            <GlassCard className="p-4 mt-4">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="neumorphic-inset p-4"
+            >
               <h3 className="font-semibold text-foreground mb-3">
                 Transaction Hashes
               </h3>
@@ -367,18 +382,30 @@ export default function CreateQuestPage() {
                   </div>
                 )}
               </div>
-            </GlassCard>
+            </motion.div>
           )}
-      </div>
 
-      <BottomNav
-        items={[
-          { href: "/home", label: "Map", icon: "M" },
-          { href: "/quest", label: "Quests", icon: "Q" },
-          { href: "/clans", label: "Clans", icon: "C" },
-          { href: "/profile", label: "Profile", icon: "P" },
-        ]}
-      />
-    </main>
+        {/* Create Button */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          <button
+            onClick={createQuest}
+            disabled={!isConnected || isCreating || isPending || isConfirming}
+            className="w-full neumorphic-button px-6 py-4 font-semibold text-foreground transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {!isConnected
+              ? "Connect Wallet to Create Quest"
+              : isCreating || isPending || isConfirming
+              ? "Creating Quest..."
+              : success
+              ? "Quest Created Successfully!"
+              : "Create Quest"}
+          </button>
+        </motion.div>
+      </div>
+    </div>
   );
 }
