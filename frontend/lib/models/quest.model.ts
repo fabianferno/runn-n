@@ -79,5 +79,5 @@ QuestSchema.index({ creator: 1, createdAt: -1 });
 QuestSchema.index({ status: 1, createdAt: -1 });
 QuestSchema.index({ difficulty: 1 });
 
-export const QuestModel = mongoose.models.Quest || mongoose.model<IQuest>("Quest", QuestSchema);
+export const QuestModel = (mongoose.models?.Quest as mongoose.Model<IQuest>) || mongoose.model<IQuest>("Quest", QuestSchema);
 

@@ -47,5 +47,5 @@ const PathSchema = new Schema<IPath>(
 // Index for querying user paths
 PathSchema.index({ user: 1, timestamp: -1 });
 
-export const PathModel = mongoose.models.Path || mongoose.model<IPath>("Path", PathSchema);
+export const PathModel = (mongoose.models?.Path as mongoose.Model<IPath>) || mongoose.model<IPath>("Path", PathSchema);
 

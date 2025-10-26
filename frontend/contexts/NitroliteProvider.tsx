@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { webSocketService, type WsStatus } from '@/lib/websocket';
 import {
     BalanceUpdateResponse,
@@ -128,6 +128,7 @@ export const NitroliteProvider: React.FC<NitroliteProviderProps> = ({ children }
     const [appSessionId, setAppSessionId] = useState<string | null>(null);
     const [isAppSessionCreated, setIsAppSessionCreated] = useState(false);
     const [isCreatingAppSession, setIsCreatingAppSession] = useState(false);
+    const appStateVersionRef = useRef<number>(1);
 
     // Message state
     const [messages, setMessages] = useState<unknown[]>([]);
@@ -275,7 +276,7 @@ export const NitroliteProvider: React.FC<NitroliteProviderProps> = ({ children }
 
             // Handle auth success
             if (response.method === RPCMethod.AuthVerify && response.params?.success) {
-                console.log("Auth success:", response.params);
+                console.log("🟢 Nitrolite Authenticated");
                 setIsNitroliteAuthenticated(true);
                 if (response.params.jwtToken) storeJWT(response.params.jwtToken);
             }
@@ -285,16 +286,12 @@ export const NitroliteProvider: React.FC<NitroliteProviderProps> = ({ children }
                 const balanceResponse = response as GetLedgerBalancesResponse;
                 const balances = balanceResponse.params.ledgerBalances;
 
-                console.log('Received balance response:', balances);
-
                 if (balances && balances.length > 0) {
                     const balancesMap = Object.fromEntries(
                         balances.map((balance) => [balance.asset, balance.amount]),
                     );
-                    console.log('Setting balances:', balancesMap);
                     setBalances(balancesMap);
                 } else {
-                    console.log('No balance data received - wallet appears empty');
                     setBalances({});
                 }
                 setIsLoadingBalances(false);
@@ -305,29 +302,28 @@ export const NitroliteProvider: React.FC<NitroliteProviderProps> = ({ children }
                 const balanceUpdate = response as BalanceUpdateResponse;
                 const balances = balanceUpdate.params.balanceUpdates;
 
-                console.log('Live balance update received:', balances);
-
                 const balancesMap = Object.fromEntries(
                     balances.map((balance) => [balance.asset, balance.amount]),
                 );
-                console.log('Updating balances in real-time:', balancesMap);
                 setBalances(balancesMap);
             }
 
             // Handle CreateAppSession response
             if (response.method === RPCMethod.CreateAppSession) {
                 const appSessionResponse = response as CreateAppSessionResponse;
-                console.log('App session created:', appSessionResponse.params);
+                console.log('🟢 App Session Created:', appSessionResponse.params.appSessionId);
 
                 setAppSessionId(appSessionResponse.params.appSessionId);
                 setIsAppSessionCreated(true);
                 setIsCreatingAppSession(false);
+                appStateVersionRef.current = 2; // Reset app state version for new session
+                console.log('🟢 App State Version reset to 1 for new session');
             }
 
             // Handle Message responses
             if (response.method === RPCMethod.SubmitAppState) {
                 const messageResponse = response as SubmitAppStateResponse;
-                console.log('Message received:', messageResponse.params);
+                console.log('🟡 NITROLITE MESSAGE RECEIVED:', messageResponse.params);
 
                 // Add message to our messages array
                 setMessages(prev => [...prev, messageResponse.params]);
@@ -384,14 +380,12 @@ export const NitroliteProvider: React.FC<NitroliteProviderProps> = ({ children }
     // Automatically fetch balances when user is authenticated
     useEffect(() => {
         if (isNitroliteAuthenticated && sessionKey && account) {
-            console.log('Authenticated! Fetching ledger balances...');
             setIsLoadingBalances(true);
 
             const sessionSigner = createECDSAMessageSigner(sessionKey.privateKey);
 
             createGetLedgerBalancesMessage(sessionSigner, account)
                 .then((getBalancesPayload) => {
-                    console.log('Sending balance request...', getBalancesPayload);
                     webSocketService.send(getBalancesPayload);
                 })
                 .catch((error) => {
@@ -440,7 +434,6 @@ export const NitroliteProvider: React.FC<NitroliteProviderProps> = ({ children }
                 allocations,
             });
 
-            console.log('Sending app session creation request...', appSessionPayload);
             webSocketService.send(appSessionPayload);
         } catch (error) {
             console.error('Failed to create app session request:', error);
@@ -449,16 +442,20 @@ export const NitroliteProvider: React.FC<NitroliteProviderProps> = ({ children }
     };
 
     const sendMessage = async (messageBody: string) => {
-        if (!sessionKey || !appSessionId || isSendingMessage) {
-            console.error('Cannot send message: missing requirements or already sending');
+        if (!sessionKey || !appSessionId) {
+            console.error('🔴 Cannot send message - Session:', !!sessionKey, 'AppSession:', !!appSessionId);
             return;
         }
 
+        // Don't block on isSendingMessage - allow rapid-fire messages
         setIsSendingMessage(true);
 
         const sessionSigner = createECDSAMessageSigner(sessionKey.privateKey);
 
         try {
+            const currentAppStateVersion = appStateVersionRef.current;
+            appStateVersionRef.current += 1; // Increment immediately for next message
+            
             const messagePayload = await createSubmitAppStateMessage(sessionSigner, {
                 app_session_id: appSessionId as `0x${string}`,
                 intent: RPCAppStateIntent.Operate,
@@ -478,10 +475,13 @@ export const NitroliteProvider: React.FC<NitroliteProviderProps> = ({ children }
                 session_data: messageBody,
             });
 
-            console.log('Sending message...', messagePayload);
+            console.log('🟡 Sending Nitrolite message via WebSocket [AppState v' + currentAppStateVersion + '] → Next: ' + appStateVersionRef.current);
             webSocketService.send(messagePayload);
+            
+            // Reset flag immediately after send (don't wait for response)
+            setTimeout(() => setIsSendingMessage(false), 100);
         } catch (error) {
-            console.error('Failed to create message request:', error);
+            console.error('🔴 Failed to create message:', error);
             setIsSendingMessage(false);
         }
     };

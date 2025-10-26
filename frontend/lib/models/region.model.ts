@@ -52,5 +52,5 @@ const RegionSchema = new Schema<IRegion>(
   }
 );
 
-export const RegionModel = mongoose.models.Region || mongoose.model<IRegion>("Region", RegionSchema);
+export const RegionModel = (mongoose.models?.regions as mongoose.Model<IRegion>) || mongoose.model<IRegion>("regions", RegionSchema);
 

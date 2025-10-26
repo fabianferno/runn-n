@@ -7,6 +7,7 @@ import { TerritoryGame } from "@/lib/territory-game";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { usePathTracking } from "@/hooks/usePathTracking";
 import { ApiService } from "@/services/api.service";
+import { useNitroliteMessages, useNitroliteAppSession } from "@/hooks/useNitrolite";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || "";
 // Add at the top of MapComponent after imports
@@ -20,17 +21,31 @@ export const MapComponent: React.FC<MapComponentProps> = ({
   userId,
   userColor,
 }) => {
-  useEffect(() => {
-    console.log("API Base URL:", process.env.NEXT_PUBLIC_API_URL);
-  }, []);
+  // Removed API URL logging to keep console clean for Nitrolite messages
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const gameRef = useRef<TerritoryGame | null>(null);
   const userMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const [realtimeHexes, setRealtimeHexes] = useState<Set<string>>(new Set());
+  
+  // Nitrolite version tracking
+  const messageVersionRef = useRef<number>(1);
+  
+  // Simulation state
+  const [isSimulating, setIsSimulating] = useState(false);
+  const [simulatedLocation, setSimulatedLocation] = useState<{
+    latitude: number;
+    longitude: number;
+    accuracy: number;
+    timestamp: number;
+  } | null>(null);
+  const simulationIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Hooks
-  const { currentLocation, startTracking, stopTracking } = useGeolocation();
+  const { currentLocation: realLocation, startTracking, stopTracking } = useGeolocation();
+  
+  // Use simulated location if simulating, otherwise use real location
+  const currentLocation = isSimulating && simulatedLocation ? simulatedLocation : realLocation;
   const {
     path,
     matchedPath,
@@ -41,6 +56,10 @@ export const MapComponent: React.FC<MapComponentProps> = ({
     stopRecording,
     clearPath,
   } = usePathTracking();
+  
+  // Nitrolite hooks
+  const { sendMessage, isSendingMessage } = useNitroliteMessages();
+  const { isAppSessionCreated } = useNitroliteAppSession();
 
   // State
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -63,6 +82,51 @@ export const MapComponent: React.FC<MapComponentProps> = ({
     return () => clearInterval(interval);
   }, [isRecording]);
 
+  // Walking Simulation
+  useEffect(() => {
+    if (isSimulating) {
+      // Start from Chennai center if no location yet
+      if (!simulatedLocation) {
+        setSimulatedLocation({
+          latitude: 13.0827,
+          longitude: 80.2707,
+          accuracy: 10,
+          timestamp: Date.now(),
+        });
+      }
+
+      // Update location every second to simulate walking
+      // Walking speed: ~1.4 m/s = ~0.0000126 degrees per second (at this latitude)
+      simulationIntervalRef.current = setInterval(() => {
+        setSimulatedLocation((prev) => {
+          if (!prev) return prev;
+
+          // Random walk pattern - move in slightly random direction
+          const angle = Math.random() * 2 * Math.PI;
+          const distance = 0.000015; // ~1.5 meters per step
+          
+          return {
+            latitude: prev.latitude + Math.cos(angle) * distance,
+            longitude: prev.longitude + Math.sin(angle) * distance,
+            accuracy: 10,
+            timestamp: Date.now(),
+          };
+        });
+      }, 1000); // Update every second
+    } else {
+      if (simulationIntervalRef.current) {
+        clearInterval(simulationIntervalRef.current);
+        simulationIntervalRef.current = null;
+      }
+    }
+
+    return () => {
+      if (simulationIntervalRef.current) {
+        clearInterval(simulationIntervalRef.current);
+      }
+    };
+  }, [isSimulating, simulatedLocation]);
+
   // Initialize map
   useEffect(() => {
     if (!mapContainerRef.current) return;
@@ -77,8 +141,6 @@ export const MapComponent: React.FC<MapComponentProps> = ({
     mapRef.current = map;
 
     map.on("load", async () => {
-      console.log("Map loaded, initializing game...");
-
       // Initialize territory game
       gameRef.current = new TerritoryGame(map, 11, 12);
 
@@ -143,7 +205,6 @@ export const MapComponent: React.FC<MapComponentProps> = ({
 
   const loadTerritories = async () => {
     if (!mapRef.current || !gameRef.current) {
-      console.warn("Map or game not ready");
       return;
     }
 
@@ -151,16 +212,8 @@ export const MapComponent: React.FC<MapComponentProps> = ({
       const bounds = mapRef.current.getBounds();
 
       if (!bounds) {
-        console.warn("Map bounds not available yet");
         return;
       }
-
-      console.log("🔍 Loading territories for bounds:", {
-        west: bounds.getWest(),
-        south: bounds.getSouth(),
-        east: bounds.getEast(),
-        north: bounds.getNorth(),
-      });
 
       const viewportData = await ApiService.getTerritoriesInViewport(
         {
@@ -172,12 +225,6 @@ export const MapComponent: React.FC<MapComponentProps> = ({
         11
       );
 
-      console.log("📦 Received viewport data:", {
-        regionCount: Object.keys(viewportData.regions || {}).length,
-        totalHexes: viewportData.totalHexes,
-        regions: viewportData.regions,
-      });
-
       if (
         viewportData.regions &&
         Object.keys(viewportData.regions).length > 0
@@ -185,17 +232,9 @@ export const MapComponent: React.FC<MapComponentProps> = ({
         let totalLoaded = 0;
 
         Object.entries(viewportData.regions).forEach(([regionId, hexes]) => {
-          console.log(
-            `🔧 Processing region ${regionId} with ${Object.keys(hexes as object).length
-            } hexes`
-          );
-
           Object.entries(
             hexes as Record<string, { user: string; color: string }>
           ).forEach(([hexId, territory]) => {
-            console.log(
-              `  Adding hex ${hexId} for user ${territory.user} (${territory.color})`
-            );
             gameRef.current?.setTerritory(
               hexId,
               territory.user,
@@ -205,9 +244,8 @@ export const MapComponent: React.FC<MapComponentProps> = ({
           });
         });
 
-        console.log(`✅ Loaded ${totalLoaded} hexes from MongoDB to map`);
-      } else {
-        console.log("⚠️ No territories found in viewport");
+        // Only log summary
+        // console.log(`Loaded ${totalLoaded} hexes from MongoDB`);
       }
     } catch (error) {
       console.error("❌ Error loading territories:", error);
@@ -270,19 +308,30 @@ export const MapComponent: React.FC<MapComponentProps> = ({
       // Add to local set
       setRealtimeHexes((prev) => new Set(prev).add(hexId));
 
-      // Update map immediately
+      // Update map immediately (local visual update)
       gameRef.current.setTerritory(hexId, userId, userColor);
 
-      // Send to backend immediately
-      try {
-        await ApiService.batchUpdate({
-          updates: {
-            [userId]: [hexId],
-          },
-        });
-        console.log(`✅ Captured hex ${hexId} in real-time`);
-      } catch (error) {
-        console.error("Error sending real-time capture:", error);
+      // ✅ Send via Nitrolite (no API call!)
+      if (isAppSessionCreated) {
+        const currentVersion = messageVersionRef.current;
+        messageVersionRef.current += 1; // Increment IMMEDIATELY for next message
+        
+        const message = {
+          type: 'hex_capture',
+          userId,
+          hexId,
+          lat,
+          lng,
+          color: userColor,
+          timestamp: Date.now(),
+          version: currentVersion
+        };
+
+        console.log('🟡 NITROLITE SEND [v' + currentVersion + ']:', message);
+        await sendMessage(JSON.stringify(message));
+        console.log('🟡 NITROLITE HEX SENT [v' + currentVersion + ']:', hexId, '→ Next version ready:', messageVersionRef.current);
+      } else {
+        console.log('🔴 NITROLITE NOT READY - Session:', isAppSessionCreated);
       }
     } catch (error) {
       console.error("Error capturing real-time hex:", error);
@@ -310,9 +359,10 @@ export const MapComponent: React.FC<MapComponentProps> = ({
     startTracking();
     startRecording();
     setRealtimeHexes(new Set()); // Clear previous session hexes
+    messageVersionRef.current = 1; // Reset version for new session
+    console.log('🟢 New session started - Version reset to 1');
   };
-  // Stop tracking and send to backend
-  // Stop tracking and send to backend
+  // Stop tracking and send via Nitrolite
   const handleStopTracking = async () => {
     const result = await stopRecording();
     stopTracking();
@@ -329,62 +379,73 @@ export const MapComponent: React.FC<MapComponentProps> = ({
       return;
     }
 
-    // Optional: Try to fill loops for bonus hexes
-    try {
-      const pathCoordinates: [number, number][] = result.matchedPath.map(
-        (coord) => [coord[1], coord[0]]
-      );
-
-      console.log("Checking for loop fill bonus:", {
-        pathLength: pathCoordinates.length,
-        realtimeHexesCaptured: realtimeHexes.size,
-      });
-
-      const response = await ApiService.capturePath({
-        user: userId,
-        color: userColor,
-        path: pathCoordinates,
-      });
-
-      console.log("Loop fill response:", response);
-
-      // If it was a loop, we got bonus interior hexes
-      if (response.pathType === "closed_loop" && response.interiorHexes > 0) {
-        // Fill the interior hexes on map
-        response.hexPath.forEach((hexId) => {
-          gameRef.current?.setTerritory(hexId, userId, userColor);
-        });
-
-        alert(
-          `🎉 LOOP BONUS!\n` +
-          `Hexes while running: ${realtimeHexes.size}\n` +
-          `Loop interior fill: ${response.interiorHexes}\n` +
-          `Total captured: ${response.hexesCaptured}\n` +
-          `Distance: ${(distance / 1000).toFixed(2)} km`
+    // ✅ Send complete path via Nitrolite
+    if (isAppSessionCreated) {
+      try {
+        const pathCoordinates: [number, number][] = result.matchedPath.map(
+          (coord) => [coord[1], coord[0]]
         );
 
-        setCapturedHexes((prev) => prev + response.interiorHexes);
-      } else {
-        // Just a line, no bonus
+        // Send path data via Nitrolite
+        const currentVersion = messageVersionRef.current;
+        messageVersionRef.current += 1; // Increment IMMEDIATELY for next message
+        
+        const pathMessage = {
+          type: 'path_complete',
+          userId,
+          path: pathCoordinates,
+          distance,
+          color: userColor,
+          timestamp: Date.now(),
+          version: currentVersion
+        };
+
+        console.log('🟡 NITROLITE PATH SEND [v' + currentVersion + ']:', { type: 'path_complete', userId, pathPoints: pathCoordinates.length, distance });
+        await sendMessage(JSON.stringify(pathMessage));
+        console.log("🟡 NITROLITE PATH SENT [v" + currentVersion + "] SUCCESSFULLY → Next version ready:", messageVersionRef.current);
+
+        // Still check for loop bonus locally
+        const response = await ApiService.capturePath({
+          user: userId,
+          color: userColor,
+          path: pathCoordinates,
+        });
+
+        if (response.pathType === "closed_loop" && response.interiorHexes > 0) {
+          // Fill the interior hexes on map
+          response.hexPath.forEach((hexId) => {
+            gameRef.current?.setTerritory(hexId, userId, userColor);
+          });
+
+          alert(
+            `🎉 LOOP BONUS!\n` +
+              `Hexes: ${realtimeHexes.size}\n` +
+              `Loop fill: ${response.interiorHexes}\n` +
+              `Total: ${response.hexesCaptured}\n` +
+              `Distance: ${(distance / 1000).toFixed(2)} km`
+          );
+
+          setCapturedHexes((prev) => prev + response.interiorHexes);
+        } else {
+          alert(
+            `Session complete!\n` +
+              `Hexes: ${realtimeHexes.size}\n` +
+              `Distance: ${(distance / 1000).toFixed(2)} km`
+          );
+        }
+
+        clearPath();
+        setRealtimeHexes(new Set());
+      } catch (error) {
+        console.error("Error:", error);
         alert(
           `Session complete!\n` +
           `Hexes captured: ${realtimeHexes.size}\n` +
           `Distance: ${(distance / 1000).toFixed(2)} km`
         );
+        clearPath();
+        setRealtimeHexes(new Set());
       }
-
-      clearPath();
-      setRealtimeHexes(new Set());
-    } catch (error: any) {
-      console.error("Error checking loop bonus:", error);
-      // Still successful - just no bonus
-      alert(
-        `Session complete!\n` +
-        `Hexes captured: ${realtimeHexes.size}\n` +
-        `Distance: ${(distance / 1000).toFixed(2)} km`
-      );
-      clearPath();
-      setRealtimeHexes(new Set());
     }
   };
 
@@ -441,8 +502,28 @@ export const MapComponent: React.FC<MapComponentProps> = ({
             overflow: "hidden",
             marginBottom: "30px",
             boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
+            position: "relative",
           }}
         >
+          {/* Nitrolite Status Indicator */}
+          <div
+            style={{
+              position: "absolute",
+              top: "20px",
+              right: "20px",
+              zIndex: 1000,
+              padding: "10px 16px",
+              borderRadius: "8px",
+              boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+              fontSize: "14px",
+              fontWeight: "500",
+              background: isAppSessionCreated ? "#10b981" : "#f59e0b",
+              color: isAppSessionCreated ? "white" : "#000",
+            }}
+          >
+            {isAppSessionCreated ? "🟢 Nitrolite Active" : "⚠️ Create App Session"}
+          </div>
+          
           <div
             ref={mapContainerRef}
             style={{ width: "100%", height: "100%" }}
@@ -510,6 +591,7 @@ export const MapComponent: React.FC<MapComponentProps> = ({
             style={{
               width: "100%",
               padding: "16px",
+              marginBottom: "12px",
               fontSize: "18px",
               fontWeight: "bold",
               backgroundColor: isRecording ? "#3b82f6" : "#9ca3af",
@@ -529,6 +611,31 @@ export const MapComponent: React.FC<MapComponentProps> = ({
             }}
           >
             🪙 Submit Data Coin
+          </button>
+
+          {/* Simulate Walking Button */}
+          <button
+            onClick={() => setIsSimulating(!isSimulating)}
+            style={{
+              width: "100%",
+              padding: "16px",
+              fontSize: "18px",
+              fontWeight: "bold",
+              backgroundColor: isSimulating ? "#f97316" : "#8b5cf6",
+              color: "white",
+              border: "none",
+              borderRadius: "8px",
+              cursor: "pointer",
+              transition: "all 0.2s",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = "scale(1.02)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "scale(1)";
+            }}
+          >
+            {isSimulating ? "⏹ Stop Simulation" : "🚶 Simulate Walking"}
           </button>
           <button
             onClick={async () => {
@@ -777,12 +884,15 @@ export const MapComponent: React.FC<MapComponentProps> = ({
         <div style={{ marginBottom: "10px", color: "#9ca3af" }}>
           === Debug Console ===
         </div>
+        <div style={{ color: "#fbbf24" }}>🟡 Message Version: {messageVersionRef.current}</div>
+        <div>Simulation: {isSimulating ? "ACTIVE 🚶" : "INACTIVE"}</div>
         <div>Recording: {isRecording ? "TRUE" : "FALSE"}</div>
         <div>Path Points: {path.length}</div>
         <div>Matched Path Points: {matchedPath.length}</div>
         <div>Distance: {distance.toFixed(2)}m</div>
         <div>Time: {elapsedTime}s</div>
         <div>Total Captured Hexes: {capturedHexes}</div>
+        <div>Real-time Hexes (This Session): {realtimeHexes.size}</div>
         {currentLocation && (
           <>
             <div>Current Lat: {currentLocation.latitude.toFixed(6)}</div>

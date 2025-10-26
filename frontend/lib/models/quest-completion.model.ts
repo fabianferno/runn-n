@@ -36,7 +36,7 @@ const QuestCompletionSchema = new Schema<IQuestCompletion>(
 QuestCompletionSchema.index({ questId: 1, userId: 1 });
 QuestCompletionSchema.index({ status: 1, createdAt: -1 });
 
-export const QuestCompletionModel = mongoose.models.QuestCompletion || mongoose.model<IQuestCompletion>(
+export const QuestCompletionModel = (mongoose.models?.QuestCompletion as mongoose.Model<IQuestCompletion>) || mongoose.model<IQuestCompletion>(
   "QuestCompletion",
   QuestCompletionSchema
 );

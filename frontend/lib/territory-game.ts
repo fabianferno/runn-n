@@ -706,7 +706,7 @@ export class TerritoryGame {
         features: filteredFeatures,
       });
 
-      console.log(`✅ Set territory ${hexId} for user ${userId}`);
+
     } catch (error) {
       console.error("Error setting territory:", error);
     }
