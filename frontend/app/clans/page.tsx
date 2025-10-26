@@ -4,7 +4,7 @@ import { useState } from "react";
 import { GlassCard } from "@/components/glass-card";
 import { ClanCard } from "@/components/clan-card";
 import { LeaderboardItem } from "@/components/leaderboard-item";
-import { BottomNav } from "@/components/bottom-nav";
+import { BottomNav } from "@/components/bottom-nav1";
 
 const mockClans = [
   {

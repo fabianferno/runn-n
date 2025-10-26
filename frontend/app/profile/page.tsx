@@ -2,7 +2,7 @@
 
 import { GlassCard } from "@/components/glass-card";
 import { StatCard } from "@/components/stat-card";
-import { BottomNav } from "@/components/bottom-nav";
+import { BottomNav } from "@/components/bottom-nav1";
 
 function ProfilePage() {
   return (

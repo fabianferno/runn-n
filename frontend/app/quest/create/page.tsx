@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { GlassCard } from "@/components/glass-card";
-import { BottomNav } from "@/components/bottom-nav";
+import { BottomNav } from "@/components/bottom-nav1";
 import { useAccount, useChainId } from "wagmi";
 import { QuestFormData, DEFAULT_FORM_DATA } from "@/types/quest";
 import { useDataCoinCreation } from "@/hooks/useDataCoinCreation";
@@ -11,7 +11,7 @@ export default function CreateQuestPage() {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const [formData, setFormData] = useState<QuestFormData>(DEFAULT_FORM_DATA);
-  
+
   // Use the custom hook for DataCoin creation
   const {
     isCreating,
@@ -43,10 +43,13 @@ export default function CreateQuestPage() {
   }, [writeError]);
 
   // Form input handlers
-  const handleInputChange = (field: keyof QuestFormData, value: string | number) => {
-    setFormData(prev => ({
+  const handleInputChange = (
+    field: keyof QuestFormData,
+    value: string | number
+  ) => {
+    setFormData((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
   };
 
@@ -69,22 +72,37 @@ export default function CreateQuestPage() {
             <div>
               <h3 className="font-semibold text-foreground">Wallet Status</h3>
               <p className="text-sm text-muted-foreground">
-                {isConnected ? `Connected: ${address?.slice(0, 6)}...${address?.slice(-4)}` : "Not connected"}
+                {isConnected
+                  ? `Connected: ${address?.slice(0, 6)}...${address?.slice(-4)}`
+                  : "Not connected"}
               </p>
               <p className="text-xs text-muted-foreground">
-                Chain ID: {chainId} {chainId === 11155111 ? "(Sepolia ✓)" : chainId === 1 ? "(Mainnet)" : "(Unknown)"}
+                Chain ID: {chainId}{" "}
+                {chainId === 11155111
+                  ? "(Sepolia ✓)"
+                  : chainId === 1
+                  ? "(Mainnet)"
+                  : "(Unknown)"}
               </p>
             </div>
-            <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-400' : 'bg-red-400'}`} />
+            <div
+              className={`w-3 h-3 rounded-full ${
+                isConnected ? "bg-green-400" : "bg-red-400"
+              }`}
+            />
           </div>
         </GlassCard>
 
         {/* Quest Information */}
         <GlassCard className="p-4 mb-6">
-          <h3 className="font-semibold text-foreground mb-3">Quest Information</h3>
+          <h3 className="font-semibold text-foreground mb-3">
+            Quest Information
+          </h3>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1">Quest Name</label>
+              <label className="block text-sm font-medium text-foreground mb-1">
+                Quest Name
+              </label>
               <input
                 type="text"
                 value={formData.questName}
@@ -94,19 +112,27 @@ export default function CreateQuestPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1">Quest Description</label>
+              <label className="block text-sm font-medium text-foreground mb-1">
+                Quest Description
+              </label>
               <textarea
                 value={formData.questDescription}
-                onChange={(e) => handleInputChange("questDescription", e.target.value)}
+                onChange={(e) =>
+                  handleInputChange("questDescription", e.target.value)
+                }
                 className="w-full px-3 py-2 bg-background/50 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary h-24 resize-none"
                 placeholder="Describe your quest (this will be used for AI analysis)"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1">Difficulty</label>
+              <label className="block text-sm font-medium text-foreground mb-1">
+                Difficulty
+              </label>
               <select
                 value={formData.difficulty}
-                onChange={(e) => handleInputChange("difficulty", e.target.value)}
+                onChange={(e) =>
+                  handleInputChange("difficulty", e.target.value)
+                }
                 className="w-full px-3 py-2 bg-background/50 border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 <option value="easy">Easy</option>
@@ -116,11 +142,15 @@ export default function CreateQuestPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1">Lock Amount (USDC)</label>
+              <label className="block text-sm font-medium text-foreground mb-1">
+                Lock Amount (USDC)
+              </label>
               <input
                 type="number"
                 value={formData.lockAmount}
-                onChange={(e) => handleInputChange("lockAmount", Number(e.target.value))}
+                onChange={(e) =>
+                  handleInputChange("lockAmount", Number(e.target.value))
+                }
                 className="w-full px-3 py-2 bg-background/50 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                 placeholder="5"
                 min="1"
@@ -135,7 +165,9 @@ export default function CreateQuestPage() {
 
         {/* DataCoin Configuration - Hidden (using defaults) */}
         <GlassCard className="p-4 mb-6">
-          <h3 className="font-semibold text-foreground mb-3">DataCoin Configuration</h3>
+          <h3 className="font-semibold text-foreground mb-3">
+            DataCoin Configuration
+          </h3>
           <div className="space-y-2 text-sm text-muted-foreground">
             <p>• Coin Name: QuestCoin (QC)</p>
             <p>• Creator Allocation: 20%</p>
@@ -143,7 +175,8 @@ export default function CreateQuestPage() {
             <p>• Liquidity Allocation: 30%</p>
             <p>• Vesting Period: 365 days</p>
             <p className="text-xs mt-2 text-muted-foreground/70">
-              These settings are optimized for quest rewards and can be customized in advanced mode.
+              These settings are optimized for quest rewards and can be
+              customized in advanced mode.
             </p>
           </div>
         </GlassCard>
@@ -159,28 +192,42 @@ export default function CreateQuestPage() {
               <p className="text-sm text-muted-foreground mb-4">
                 {creationStep || "Processing transaction..."}
               </p>
-              
+
               {/* Transaction Status Indicators */}
               <div className="space-y-2 text-xs">
                 {approvalHash && (
                   <div className="flex items-center justify-between p-2 bg-blue-500/10 rounded">
-                    <span className="text-blue-300">Step 1: Token Approval</span>
+                    <span className="text-blue-300">
+                      Step 1: Token Approval
+                    </span>
                     <span className="text-blue-300 font-mono">
-                      {approvalHash === "pending" ? "Pending..." : `${approvalHash.slice(0, 8)}...${approvalHash.slice(-6)}`}
+                      {approvalHash === "pending"
+                        ? "Pending..."
+                        : `${approvalHash.slice(0, 8)}...${approvalHash.slice(
+                            -6
+                          )}`}
                     </span>
                   </div>
                 )}
                 {creationHash && (
                   <div className="flex items-center justify-between p-2 bg-green-500/10 rounded">
-                    <span className="text-green-300">Step 2: DataCoin Creation</span>
+                    <span className="text-green-300">
+                      Step 2: DataCoin Creation
+                    </span>
                     <span className="text-green-300 font-mono">
-                      {creationHash === "pending" ? "Pending..." : `${creationHash.slice(0, 8)}...${creationHash.slice(-6)}`}
+                      {creationHash === "pending"
+                        ? "Pending..."
+                        : `${creationHash.slice(0, 8)}...${creationHash.slice(
+                            -6
+                          )}`}
                     </span>
                   </div>
                 )}
                 {creationStep.includes("Granting mint access") && (
                   <div className="flex items-center justify-between p-2 bg-purple-500/10 rounded">
-                    <span className="text-purple-300">Step 3: Granting Mint Access</span>
+                    <span className="text-purple-300">
+                      Step 3: Granting Mint Access
+                    </span>
                     <span className="text-purple-300">Processing...</span>
                   </div>
                 )}
@@ -208,9 +255,7 @@ export default function CreateQuestPage() {
               <h3 className="text-xl font-bold text-red-400 mb-2">
                 Creation Failed
               </h3>
-              <p className="text-sm text-muted-foreground">
-                {error}
-              </p>
+              <p className="text-sm text-muted-foreground">{error}</p>
             </div>
           </GlassCard>
         )}
@@ -224,41 +269,50 @@ export default function CreateQuestPage() {
                 Quest Created Successfully!
               </h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Your quest &quot;{formData.questName}&quot; has been created with a DataCoin reward system.
+                Your quest &quot;{formData.questName}&quot; has been created
+                with a DataCoin reward system.
               </p>
-              
+
               {/* DataCoin Information */}
               {dataCoinAddress && (
                 <div className="space-y-2 text-left bg-green-500/10 p-3 rounded-lg">
                   <div>
-                    <span className="text-xs text-muted-foreground">DataCoin Address:</span>
+                    <span className="text-xs text-muted-foreground">
+                      DataCoin Address:
+                    </span>
                     <p className="text-sm font-mono break-all text-green-300">
                       {dataCoinAddress}
                     </p>
                   </div>
                   {poolAddress && (
                     <div>
-                      <span className="text-xs text-muted-foreground">Pool Address:</span>
+                      <span className="text-xs text-muted-foreground">
+                        Pool Address:
+                      </span>
                       <p className="text-sm font-mono break-all text-green-300">
                         {poolAddress}
                       </p>
                     </div>
                   )}
                   <div>
-                    <span className="text-xs text-muted-foreground">Coin Details:</span>
+                    <span className="text-xs text-muted-foreground">
+                      Coin Details:
+                    </span>
                     <p className="text-sm text-green-300">
                       {formData.coinName} ({formData.coinSymbol})
                     </p>
                   </div>
                   <div>
-                    <span className="text-xs text-muted-foreground">Mint Access:</span>
+                    <span className="text-xs text-muted-foreground">
+                      Mint Access:
+                    </span>
                     <p className="text-sm text-green-300">
                       {mintAccessGranted ? "✅ Granted" : "⏳ Pending"}
                     </p>
                   </div>
                 </div>
               )}
-              
+
               <p className="text-xs text-muted-foreground mt-3">
                 Transaction: {creationHash}
               </p>
@@ -273,42 +327,48 @@ export default function CreateQuestPage() {
             disabled={!isConnected || isCreating || isPending || isConfirming}
             className="w-full px-6 py-4 bg-primary/80 text-white rounded-lg hover:bg-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold mb-3"
           >
-            {!isConnected 
+            {!isConnected
               ? "Connect Wallet to Create Quest"
               : isCreating || isPending || isConfirming
               ? "Creating Quest..."
               : success
               ? "Quest Created Successfully!"
-              : "Create Quest"
-            }
+              : "Create Quest"}
           </button>
-          
         </GlassCard>
 
         {/* Transaction Hash Display */}
-        {(approvalHash || creationHash) && approvalHash !== "pending" && creationHash !== "pending" && (
-          <GlassCard className="p-4 mt-4">
-            <h3 className="font-semibold text-foreground mb-3">Transaction Hashes</h3>
-            <div className="space-y-2">
-              {approvalHash && approvalHash !== "pending" && (
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">Token Approval:</p>
-                  <p className="text-sm text-muted-foreground break-all font-mono bg-blue-500/10 p-2 rounded">
-                    {approvalHash}
-                  </p>
-                </div>
-              )}
-              {creationHash && creationHash !== "pending" && (
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">DataCoin Creation:</p>
-                  <p className="text-sm text-muted-foreground break-all font-mono bg-green-500/10 p-2 rounded">
-                    {creationHash}
-                  </p>
-                </div>
-              )}
-            </div>
-          </GlassCard>
-        )}
+        {(approvalHash || creationHash) &&
+          approvalHash !== "pending" &&
+          creationHash !== "pending" && (
+            <GlassCard className="p-4 mt-4">
+              <h3 className="font-semibold text-foreground mb-3">
+                Transaction Hashes
+              </h3>
+              <div className="space-y-2">
+                {approvalHash && approvalHash !== "pending" && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">
+                      Token Approval:
+                    </p>
+                    <p className="text-sm text-muted-foreground break-all font-mono bg-blue-500/10 p-2 rounded">
+                      {approvalHash}
+                    </p>
+                  </div>
+                )}
+                {creationHash && creationHash !== "pending" && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">
+                      DataCoin Creation:
+                    </p>
+                    <p className="text-sm text-muted-foreground break-all font-mono bg-green-500/10 p-2 rounded">
+                      {creationHash}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </GlassCard>
+          )}
       </div>
 
       <BottomNav
