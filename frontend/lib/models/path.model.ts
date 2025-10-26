@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document } from "mongoose";
 
 interface IPath extends Document {
-  user: string;
+  user: string; // Wallet address
   type: "closed_loop" | "open_path" | "single_hex";
   coordinates: [number, number][];
   hexPath: string[];
@@ -9,7 +9,7 @@ interface IPath extends Document {
   boundaryHexes: number;
   interiorHexes: number;
   regionsAffected: string[];
-  conflicts: Map<string, string>;
+  conflicts: Map<string, string>; // Map of hex ID -> wallet address (conflicting owner)
   timestamp: number;
   processingTime: number;
 }

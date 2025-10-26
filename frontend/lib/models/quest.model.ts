@@ -26,7 +26,7 @@ interface IQuest extends Document {
   chainName: string;
   
   // Creator info
-  creator: string;
+  creator: string; // Wallet address
   
   // Blockchain data (populated after creation)
   dataCoinAddress?: string;

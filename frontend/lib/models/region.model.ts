@@ -1,20 +1,20 @@
 import mongoose, { Schema, Document } from "mongoose";
 
 interface ITerritory {
-  user: string;
+  user: string; // Wallet address
   color: string;
   capturedAt: number;
   method: "click" | "line" | "loop";
 }
 
 interface IRegion extends Document {
-  _id: string;
+  _id: string; // Region hex ID
   territories: Map<string, ITerritory>;
   metadata: {
     hexCount: number;
     lastUpdate: number;
-    playerCounts: Map<string, number>;
-    contestedBy: string[];
+    playerCounts: Map<string, number>; // Map of wallet address -> hex count
+    contestedBy: string[]; // Array of wallet addresses
   };
 }
 
