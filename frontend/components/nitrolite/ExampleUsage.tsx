@@ -33,9 +33,8 @@ export const ExampleUsage: React.FC = () => {
     const { messages, isSendingMessage, sendMessage } = useNitroliteMessages();
 
     const handleCreateSession = async () => {
-        // Example: Create session with a partner
-        const partnerAddress = '0x1234567890123456789012345678901234567890';
-        await createAppSession(partnerAddress);
+        // Example: Create session with a partner 
+        await createAppSession();
     };
 
     const handleSendTestMessage = async () => {

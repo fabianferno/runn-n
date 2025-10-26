@@ -101,8 +101,7 @@ function MyComponent() {
 const { createAppSession } = useNitroliteAppSession();
 
 const handleCreateSession = async () => {
-    const partnerAddress = '0x1234567890123456789012345678901234567890';
-    await createAppSession(partnerAddress);
+     await createAppSession( );
 };
 ```
 

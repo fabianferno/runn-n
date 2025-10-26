@@ -37,6 +37,7 @@ import {
 } from '@/lib/nitrolite-utils';
 import { useAccount, useWalletClient } from 'wagmi';
 
+
 // EIP-712 domain for authentication
 const getAuthDomain = () => ({
     name: 'run-n',
@@ -50,6 +51,7 @@ const SESSION_DURATION = 3600; // 1 hour
 // App session constants
 // @ts-expect-error - RPCProtocolVersion is not defined
 const APP_PROTOCOL: RPCProtocolVersion = "NitroRPC/0.4";
+const partnerAddress = process.env.NEXT_PUBLIC_SERVER_WALLET;
 
 interface NitroliteContextType {
     // WebSocket state
@@ -79,7 +81,7 @@ interface NitroliteContextType {
     isSendingMessage: boolean;
 
     // Actions
-    createAppSession: (partnerAddress: string) => Promise<void>;
+    createAppSession: () => Promise<void>;
     sendMessage: (messageBody: string) => Promise<void>;
     fetchBalances: () => Promise<void>;
     handleTransfer: (params: TransferRequestParams) => Promise<void>;
@@ -182,7 +184,7 @@ export const NitroliteProvider: React.FC<NitroliteProviderProps> = ({ children }
         const handleMessage = async (data: unknown) => {
             console.log("Recieved message: ", data)
             const response = parseAnyRPCResponse(JSON.stringify(data as string));
-            console.log("Response:", response);
+            console.log("Response:", response, walletClient, sessionKey, account, sessionExpireTimestamp);
 
             // Handle auth challenge
             if (
@@ -192,8 +194,8 @@ export const NitroliteProvider: React.FC<NitroliteProviderProps> = ({ children }
                 account &&
                 sessionExpireTimestamp
             ) {
+                console.log("Auth Challenge Response:", response);
                 const challengeResponse = response as AuthChallengeResponse;
-                console.log("Auth Challenge Response:", challengeResponse);
 
                 const authParams = {
                     scope: AUTH_SCOPE,
@@ -336,7 +338,7 @@ export const NitroliteProvider: React.FC<NitroliteProviderProps> = ({ children }
     }, [isNitroliteAuthenticated, sessionKey, account]);
 
     // Actions
-    const createAppSession = async (partnerAddress: string) => {
+    const createAppSession = async () => {
         if (!sessionKey || !account || isCreatingAppSession) {
             console.error('Cannot create app session: missing requirements or already creating');
             return;
@@ -356,12 +358,12 @@ export const NitroliteProvider: React.FC<NitroliteProviderProps> = ({ children }
         const allocations: RPCAppSessionAllocation[] = [
             {
                 participant: account as `0x${string}`,
-                asset: 'usdc',
+                asset: 'QC',
                 amount: '100',
             },
             {
-                participant: sessionKey.address as `0x${string}`,
-                asset: 'usdc',
+                participant: partnerAddress as `0x${string}`,
+                asset: 'QC',
                 amount: '100',
             },
         ];
@@ -400,12 +402,12 @@ export const NitroliteProvider: React.FC<NitroliteProviderProps> = ({ children }
                 allocations: [
                     {
                         participant: account as `0x${string}`,
-                        asset: 'usdc',
+                        asset: 'QC',
                         amount: '100',
                     },
                     {
-                        participant: sessionKey.address as `0x${string}`,
-                        asset: 'usdc',
+                        participant: partnerAddress as `0x${string}`,
+                        asset: 'QC',
                         amount: '100',
                     },
                 ],

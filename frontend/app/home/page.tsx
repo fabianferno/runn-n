@@ -42,9 +42,9 @@ function HomePage() {
   useEffect(
     () => {
       if (walletClient) {
-        console.log("Wallet client:", walletClient);
+        // console.log("Wallet client:", walletClient);
         walletClient.requestAddresses().then((addresses) => {
-          console.log("Addresses:", addresses);
+          // console.log("Addresses:", addresses);
         });
       }
     },

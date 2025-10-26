@@ -9,9 +9,9 @@ export const BalanceStatus: React.FC = () => {
         <div className="flex items-center gap-2">
             <BalanceDisplay
                 balance={
-                    isLoadingBalances ? 'Loading...' : (balances?.['usdc'] ?? balances?.['USDC'] ?? null)
+                    isLoadingBalances ? 'Loading...' : (balances?.['QC'] ?? balances?.['QC'] ?? null)
                 }
-                symbol="USDC"
+                symbol="QC"
             />
         </div>
     );
