@@ -31,10 +31,10 @@ function HomePage() {
         color: user.color,
         name: `User ${user._id.slice(0, 6)}...`,
       });
-      
+
       // Set as current user
       territoryGameRef.current.setCurrentUser(user._id);
-      
+
       console.log("User added to territory game:", user);
     }
   }, [user]);
@@ -89,18 +89,18 @@ function HomePage() {
               showGridOverlay={true}
               gridSize={20}
               onMapLoad={(map) => {
-                console.log("Map loaded:", map);
+                // console.log("Map loaded:", map);
               }}
               onMapMove={(lng, lat, zoom) => {
-                console.log("Map moved:", { lng, lat, zoom });
+                // console.log("Map moved:", { lng, lat, zoom });
               }}
               onLocationFound={(lng, lat) => {
-                console.log("Current location found:", { lng, lat });
+                // console.log("Current location found:", { lng, lat });
               }}
               onTerritoryGameReady={(game) => {
-                console.log("Territory game ready:", game);
+                // console.log("Territory game ready:", game);
                 territoryGameRef.current = game;
-                
+
                 // If user is already authenticated, add them to the game
                 if (user) {
                   game.addPlayer(user._id, {

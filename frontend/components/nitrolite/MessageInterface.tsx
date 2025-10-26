@@ -142,7 +142,8 @@ export const MessageInterface: React.FC = () => {
                     <div className="space-y-2">
                         {messages.map((message, index) => (
                             <div key={index} className="text-sm">
-                                <div className="font-medium">
+                                {JSON.stringify(message, null, 2)}
+                                {/* <div className="font-medium">
                                     {message.type === 'text' ? 'Text' :
                                         message.type === 'coordinates' ? 'Coordinates' : 'Unknown'}
                                 </div>
@@ -156,7 +157,7 @@ export const MessageInterface: React.FC = () => {
                                 )}
                                 <div className="text-xs text-gray-500">
                                     {new Date(message.timestamp).toLocaleTimeString()}
-                                </div>
+                                </div> */}
                             </div>
                         ))}
                     </div>

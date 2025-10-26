@@ -186,8 +186,7 @@ export const MapComponent: React.FC<MapComponentProps> = ({
 
         Object.entries(viewportData.regions).forEach(([regionId, hexes]) => {
           console.log(
-            `🔧 Processing region ${regionId} with ${
-              Object.keys(hexes as object).length
+            `🔧 Processing region ${regionId} with ${Object.keys(hexes as object).length
             } hexes`
           );
 
@@ -322,8 +321,8 @@ export const MapComponent: React.FC<MapComponentProps> = ({
     if (result.matchedPath.length < 2) {
       alert(
         `Session complete!\n` +
-          `Hexes captured: ${realtimeHexes.size}\n` +
-          `Distance: ${(distance / 1000).toFixed(2)} km`
+        `Hexes captured: ${realtimeHexes.size}\n` +
+        `Distance: ${(distance / 1000).toFixed(2)} km`
       );
       clearPath();
       setRealtimeHexes(new Set());
@@ -358,10 +357,10 @@ export const MapComponent: React.FC<MapComponentProps> = ({
 
         alert(
           `🎉 LOOP BONUS!\n` +
-            `Hexes while running: ${realtimeHexes.size}\n` +
-            `Loop interior fill: ${response.interiorHexes}\n` +
-            `Total captured: ${response.hexesCaptured}\n` +
-            `Distance: ${(distance / 1000).toFixed(2)} km`
+          `Hexes while running: ${realtimeHexes.size}\n` +
+          `Loop interior fill: ${response.interiorHexes}\n` +
+          `Total captured: ${response.hexesCaptured}\n` +
+          `Distance: ${(distance / 1000).toFixed(2)} km`
         );
 
         setCapturedHexes((prev) => prev + response.interiorHexes);
@@ -369,8 +368,8 @@ export const MapComponent: React.FC<MapComponentProps> = ({
         // Just a line, no bonus
         alert(
           `Session complete!\n` +
-            `Hexes captured: ${realtimeHexes.size}\n` +
-            `Distance: ${(distance / 1000).toFixed(2)} km`
+          `Hexes captured: ${realtimeHexes.size}\n` +
+          `Distance: ${(distance / 1000).toFixed(2)} km`
         );
       }
 
@@ -381,8 +380,8 @@ export const MapComponent: React.FC<MapComponentProps> = ({
       // Still successful - just no bonus
       alert(
         `Session complete!\n` +
-          `Hexes captured: ${realtimeHexes.size}\n` +
-          `Distance: ${(distance / 1000).toFixed(2)} km`
+        `Hexes captured: ${realtimeHexes.size}\n` +
+        `Distance: ${(distance / 1000).toFixed(2)} km`
       );
       clearPath();
       setRealtimeHexes(new Set());
@@ -409,8 +408,8 @@ export const MapComponent: React.FC<MapComponentProps> = ({
 
     alert(
       `Data Coin Submitted!\n` +
-        `Lat: ${currentLocation.latitude.toFixed(6)}\n` +
-        `Lng: ${currentLocation.longitude.toFixed(6)}`
+      `Lat: ${currentLocation.latitude.toFixed(6)}\n` +
+      `Lng: ${currentLocation.longitude.toFixed(6)}`
     );
   };
 

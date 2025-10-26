@@ -146,15 +146,15 @@ export const MapComponent: React.FC<MapComponentProps> = ({
 
       try {
         const layers = mapInstance.getStyle().layers;
-        console.log(
-          "Available layers:",
-          layers.map((l) => ({ id: l.id, type: l.type }))
-        );
+        // console.log(
+        //   "Available layers:",
+        //   layers.map((l) => ({ id: l.id, type: l.type }))
+        // );
 
         layers.forEach((layer) => {
           if (layer.type === "symbol") {
             const layerId = layer.id.toLowerCase();
-            console.log("Processing symbol layer:", layerId);
+            // console.log("Processing symbol layer:", layerId);
 
             // Hide all labels if hideLabels is true
             if (hideLabels) {
@@ -306,7 +306,7 @@ export const MapComponent: React.FC<MapComponentProps> = ({
             // fetchGridDetails(gridData.id);
           });
           setTerritoryGame(game);
-          
+
           // Notify parent component that TerritoryGame is ready
           if (onTerritoryGameReady) {
             onTerritoryGameReady(game);
@@ -316,7 +316,7 @@ export const MapComponent: React.FC<MapComponentProps> = ({
         // Also try hiding labels after a short delay in case style isn't fully loaded
         setTimeout(() => {
           if (map.current) {
-            console.log("Retrying label hiding after delay...");
+            // console.log("Retrying label hiding after delay...");
             hideMapLabels(map.current);
           }
         }, 1000);
