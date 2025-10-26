@@ -134,14 +134,7 @@ export const ExampleUsage: React.FC = () => {
                     <div className="max-h-32 overflow-y-auto space-y-1">
                         {messages.slice(-3).map((message, index) => (
                             <div key={index} className="text-sm bg-gray-100 p-2 rounded">
-                                <div>Type: {message.type}</div>
-                                {message.content && <div>Content: {message.content}</div>}
-                                {message.lat && message.lng && (
-                                    <div>Coords: {message.lat}, {message.lng}</div>
-                                )}
-                                <div className="text-xs text-gray-500">
-                                    {new Date(message.timestamp).toLocaleTimeString()}
-                                </div>
+                                {JSON.stringify(message)}
                             </div>
                         ))}
                     </div>
