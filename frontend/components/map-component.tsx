@@ -64,7 +64,7 @@ export const MapComponent: React.FC<MapComponentProps> = ({
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
 
   // Territory game instance
-  const [territoryGame, setTerritoryGame] = useState<any>(null);
+  const [territoryGame, setTerritoryGame] = useState<TerritoryGame | null>(null);
 
   // Memoize callbacks to prevent unnecessary re-renders
   const handleMapLoad = useCallback(

@@ -53,10 +53,10 @@ export default function RunPage() {
       setHexesCaptured(hexesCaptured);
     };
 
-    window.addEventListener('map-state-update' as any, handleMapStateUpdate);
+    window.addEventListener('map-state-update', handleMapStateUpdate as EventListener);
 
     return () => {
-      window.removeEventListener('map-state-update' as any, handleMapStateUpdate);
+      window.removeEventListener('map-state-update', handleMapStateUpdate as EventListener);
     };
   }, []);
 

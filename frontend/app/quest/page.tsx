@@ -60,7 +60,7 @@ export default function QuestPage() {
 
     try {
       // Group completions by dataCoinAddress to batch mint
-      const groupedCompletions: { [key: string]: any[] } = {};
+      const groupedCompletions: { [key: string]: Array<{dataCoinAddress: string; mintAmount?: number; _id?: string; id?: string}> } = {};
 
       for (const completion of pendingCompletions) {
         const dataCoinAddress = completion.dataCoinAddress;
@@ -135,14 +135,14 @@ export default function QuestPage() {
     return difficultyBg[difficulty as keyof typeof difficultyBg] || "bg-gray-400/10";
   };
 
-  const filteredQuests = quests.filter((quest) => {
-    if (activeTab === "completed") {
-      return pendingCompletions.some(
-        (c: any) => c.questId === quest.id || c.questId === quest._id
-      );
-    }
-    return quest.status === "available" || quest.status === "in_progress";
-  });
+    const filteredQuests = quests.filter((quest) => {
+      if (activeTab === "completed") {
+        return pendingCompletions.some(
+          (c: {questId: string}) => c.questId === quest.id || c.questId === quest._id
+        );
+      }
+      return quest.status === "available" || quest.status === "in_progress";
+    });
 
   return (
     <div className="min-h-screen w-full bg-background flex flex-col pb-24">

@@ -20,13 +20,13 @@ export async function POST(request: NextRequest) {
 
     const result = await RegionService.batchUpdate(updates);
     return NextResponse.json(result);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error batch updating:", error);
     return NextResponse.json(
       {
         success: false,
         error: "Internal server error",
-        details: error.message,
+        details: (error instanceof Error ? error.message : "Unknown error"),
       },
       { status: 500 }
     );

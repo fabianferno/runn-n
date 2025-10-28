@@ -66,12 +66,12 @@ export class RegionService {
     }
 
     // Convert Map to plain object
-    const territories: any = {};
+    const territories: Record<string, {user: string; color: string; capturedAt: number; method: string}> = {};
     region.territories.forEach((territory, hexId) => {
       territories[hexId] = territory;
     });
 
-    const playerCounts: any = {};
+    const playerCounts: Record<string, number> = {};
     region.metadata.playerCounts.forEach((count, playerId) => {
       playerCounts[playerId] = count;
     });

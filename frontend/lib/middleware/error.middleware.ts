@@ -3,7 +3,7 @@ import { ErrorCode } from "@/types/backend";
 export interface ApiError extends Error {
   code?: ErrorCode;
   statusCode?: number;
-  details?: any;
+  details?: unknown;
 }
 
 export function createErrorResponse(err: ApiError) {

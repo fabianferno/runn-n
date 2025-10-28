@@ -4,12 +4,12 @@ import { RegionService } from "@/lib/services/region.service";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { regionId: string } }
+  { params }: { params: Promise<{ regionId: string }> }
 ) {
   try {
     await connectDB();
     
-    const { regionId } = params;
+    const { regionId } = await params;
     const region = await RegionService.getRegion(regionId);
 
     if (!region) {
@@ -28,13 +28,13 @@ export async function GET(
       territories: region.territories,
       metadata: region.metadata,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error getting region:", error);
     return NextResponse.json(
       {
         success: false,
         error: "Internal server error",
-        details: error.message,
+        details: (error instanceof Error ? error.message : "Unknown error"),
       },
       { status: 500 }
     );

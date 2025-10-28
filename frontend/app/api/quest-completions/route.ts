@@ -5,7 +5,7 @@ import { QuestCompletionService } from "@/lib/services/quest-completion.service"
 export async function POST(request: NextRequest) {
   try {
     await connectDB();
-    
+
     const { questId, userId } = await request.json();
 
     if (!questId || !userId) {
@@ -28,15 +28,19 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(result, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error registering completion:", error);
     return NextResponse.json(
       {
         success: false,
-        error: error.message || "Failed to register completion",
+        error:
+          error instanceof Error
+            ? error instanceof Error
+              ? error.message
+              : "Unknown error"
+            : "Failed to register completion",
       },
       { status: 500 }
     );
   }
 }
-

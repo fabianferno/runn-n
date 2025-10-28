@@ -27,12 +27,12 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(result, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error creating quest:", error);
     return NextResponse.json(
       {
         success: false,
-        error: error.message || "Failed to create quest",
+        error: (error instanceof Error ? error.message : "Unknown error") || "Failed to create quest",
       },
       { status: 500 }
     );
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
     const limit = searchParams.get("limit");
     const offset = searchParams.get("offset");
 
-    const filters: any = {};
+    const filters: Record<string, unknown> = {};
     if (creator) filters.creator = creator;
     if (status) filters.status = status;
     if (difficulty) filters.difficulty = difficulty;
@@ -59,12 +59,12 @@ export async function GET(request: NextRequest) {
 
     const result = await QuestService.getAllQuests(filters);
     return NextResponse.json(result);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error getting quests:", error);
     return NextResponse.json(
       {
         success: false,
-        error: error.message || "Failed to get quests",
+        error: (error instanceof Error ? error.message : "Unknown error") || "Failed to get quests",
       },
       { status: 500 }
     );

@@ -19,11 +19,11 @@ export class QuestService {
         success: true,
         quest: this.formatQuest(quest),
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating quest:", error);
       return {
         success: false,
-        error: error.message || "Failed to create quest",
+        error: (error instanceof Error ? error.message : "Unknown error") || "Failed to create quest",
       };
     }
   }
@@ -46,11 +46,11 @@ export class QuestService {
         success: true,
         quest: this.formatQuest(quest),
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error getting quest:", error);
       return {
         success: false,
-        error: error.message || "Failed to get quest",
+        error: (error instanceof Error ? error.message : "Unknown error") || "Failed to get quest",
       };
     }
   }
@@ -80,11 +80,11 @@ export class QuestService {
         success: true,
         quest: this.formatQuest(quest),
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating quest:", error);
       return {
         success: false,
-        error: error.message || "Failed to update quest",
+        error: (error instanceof Error ? error.message : "Unknown error") || "Failed to update quest",
       };
     }
   }
@@ -102,7 +102,7 @@ export class QuestService {
     }
   ): Promise<QuestListResponse> {
     try {
-      const query: any = {};
+      const query: Record<string, unknown> = {};
 
       if (filters?.creator) {
         query.creator = filters.creator;
@@ -128,14 +128,14 @@ export class QuestService {
 
       return {
         success: true,
-        quests: quests.map((quest: any) => this.formatQuest(quest)),
+        quests: quests.map((quest) => this.formatQuest(quest)),
         total,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error getting quests:", error);
       return {
         success: false,
-        error: error.message || "Failed to get quests",
+        error: (error instanceof Error ? error.message : "Unknown error") || "Failed to get quests",
       };
     }
   }
@@ -158,14 +158,14 @@ export class QuestService {
 
       return {
         success: true,
-        quests: quests.map((quest: any) => this.formatQuest(quest)),
+        quests: quests.map((quest) => this.formatQuest(quest)),
         total,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error getting quests by creator:", error);
       return {
         success: false,
-        error: error.message || "Failed to get quests",
+        error: (error instanceof Error ? error.message : "Unknown error") || "Failed to get quests",
       };
     }
   }
@@ -188,11 +188,11 @@ export class QuestService {
         success: true,
         quest: this.formatQuest(quest),
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error deleting quest:", error);
       return {
         success: false,
-        error: error.message || "Failed to delete quest",
+        error: (error instanceof Error ? error.message : "Unknown error") || "Failed to delete quest",
       };
     }
   }
@@ -200,7 +200,7 @@ export class QuestService {
   /**
    * Format quest document for response
    */
-  private static formatQuest(quest: any): Quest {
+  private static formatQuest(quest: {_id: {toString: () => string}; questName: string; questDescription: string; difficulty: string; coinName: string; coinSymbol: string; creator: string; status: string; dataCoinAddress: string; createdAt: Date; updatedAt: Date}): Quest {
     return {
       _id: quest._id.toString(),
       id: quest._id.toString(),

@@ -4,12 +4,12 @@ import { QuestCompletionService } from "@/lib/services/quest-completion.service"
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { completionId: string } }
+  { params }: { params: Promise<{ completionId: string }> }
 ) {
   try {
     await connectDB();
-    
-    const { completionId } = params;
+
+    const { completionId } = await params;
     const result = await QuestCompletionService.getCompletion(completionId);
 
     if (!result.success) {
@@ -17,15 +17,15 @@ export async function GET(
     }
 
     return NextResponse.json(result);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error getting completion:", error);
     return NextResponse.json(
       {
         success: false,
-        error: error.message || "Failed to get completion",
+        error:
+          error instanceof Error ? error.message : "Failed to get completion",
       },
       { status: 500 }
     );
   }
 }
-

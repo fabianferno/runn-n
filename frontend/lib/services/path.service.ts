@@ -175,7 +175,7 @@ export class PathService {
         regionsAffected,
         conflicts,
         processingTime: Date.now() - startTime,
-        pathId: (pathDoc._id as any).toString(),
+        pathId: (pathDoc._id as {toString: () => string}).toString(),
       };
 
       return response;

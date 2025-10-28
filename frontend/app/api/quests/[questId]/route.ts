@@ -4,12 +4,12 @@ import { QuestService } from "@/lib/services/quest.service";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { questId: string } }
+  { params }: { params: Promise<{ questId: string }> }
 ) {
   try {
     await connectDB();
     
-    const { questId } = params;
+    const { questId } = await params;
     const result = await QuestService.getQuestById(questId);
 
     if (!result.success) {
@@ -17,12 +17,12 @@ export async function GET(
     }
 
     return NextResponse.json(result);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error getting quest:", error);
     return NextResponse.json(
       {
         success: false,
-        error: error.message || "Failed to get quest",
+        error: (error instanceof Error ? error.message : "Unknown error") || "Failed to get quest",
       },
       { status: 500 }
     );
@@ -31,12 +31,12 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { questId: string } }
+  { params }: { params: Promise<{ questId: string }> }
 ) {
   try {
     await connectDB();
     
-    const { questId } = params;
+    const { questId } = await params;
     const updates = await request.json();
 
     const result = await QuestService.updateQuest(questId, updates);
@@ -46,12 +46,12 @@ export async function PATCH(
     }
 
     return NextResponse.json(result);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error updating quest:", error);
     return NextResponse.json(
       {
         success: false,
-        error: error.message || "Failed to update quest",
+        error: (error instanceof Error ? error.message : "Unknown error") || "Failed to update quest",
       },
       { status: 500 }
     );
@@ -60,12 +60,12 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { questId: string } }
+  { params }: { params: Promise<{ questId: string }> }
 ) {
   try {
     await connectDB();
     
-    const { questId } = params;
+    const { questId } = await params;
     const result = await QuestService.deleteQuest(questId);
 
     if (!result.success) {
@@ -73,12 +73,12 @@ export async function DELETE(
     }
 
     return NextResponse.json(result);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error deleting quest:", error);
     return NextResponse.json(
       {
         success: false,
-        error: error.message || "Failed to delete quest",
+        error: (error instanceof Error ? error.message : "Unknown error") || "Failed to delete quest",
       },
       { status: 500 }
     );

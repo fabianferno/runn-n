@@ -55,7 +55,7 @@ export class NitroliteProcessor {
       
       try {
         // Parse the Nitrolite RPC response
-        const data = rawData as any;
+        const data = rawData as {method?: string; params?: {session_data?: string}};
         
         console.log('🔍 NitroliteProcessor analyzing data:', {
           hasMethod: !!data.method,

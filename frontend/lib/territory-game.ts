@@ -166,19 +166,17 @@ export class TerritoryGame {
         ],
       ];
 
-      let hexagons: string[];
+      const hexagons: string[] = [];
 
       try {
         if (typeof h3.polygonToCells === "function") {
-          hexagons = h3.polygonToCells(bbox, 11, true);
-        } else if (typeof (h3 as any).polyfill === "function") {
-          hexagons = (h3 as any).polyfill(bbox, 11, true);
+          hexagons.push(...h3.polygonToCells(bbox, 11, true));
         } else {
           throw new Error("H3 library not properly imported");
         }
       } catch (error) {
         console.error("H3 Error:", error);
-        hexagons = this.generateFallbackGrid(bounds);
+        hexagons.push(...this.generateFallbackGrid(bounds));
       }
 
       console.log(`Generated ${hexagons.length} hexagons for viewport`);
@@ -353,7 +351,7 @@ export class TerritoryGame {
   }
 
   generateGeoJSON() {
-    const features: any[] = [];
+    const features: Array<{type: string; id: string; properties: Record<string, unknown>; geometry: {type: string; coordinates: unknown}}> = [];
 
     this.territories.forEach((owner, hex) => {
       let boundary;
@@ -361,8 +359,6 @@ export class TerritoryGame {
       try {
         if (typeof h3.cellToBoundary === "function") {
           boundary = h3.cellToBoundary(hex, true);
-        } else if (typeof (h3 as any).h3ToGeoBoundary === "function") {
-          boundary = (h3 as any).h3ToGeoBoundary(hex, true);
         } else {
           console.error("No H3 boundary function available");
           return;
@@ -686,7 +682,7 @@ export class TerritoryGame {
 
     try {
       // Get existing data
-      const existingData = (source as any)._data || {
+      const existingData = (source as {_data?: {type: string; features: Array<{properties?: {hex?: string}}>}})._data || {
         type: "FeatureCollection",
         features: [],
       };
@@ -694,7 +690,7 @@ export class TerritoryGame {
 
       // Remove existing feature with same hex ID
       const filteredFeatures = features.filter(
-        (f: any) => f.properties?.hex !== hexId
+        (f: {properties?: {hex?: string}}) => f.properties?.hex !== hexId
       );
 
       // Add new feature
@@ -715,7 +711,7 @@ export class TerritoryGame {
   /**
    * Helper method to convert hex to GeoJSON feature
    */
-  private hexToFeature(hexId: string, userId: string, color: string): any {
+  private hexToFeature(hexId: string, userId: string, color: string): {type: string; properties: {hex: string; owner: string; color: string}; geometry: {type: string; coordinates: unknown}} | null {
     try {
       const boundary = h3.cellToBoundary(hexId, true);
 
@@ -756,7 +752,7 @@ export class TerritoryGame {
       const polygon = [coordinates];
 
       // Fill all hexagons within the polygon
-      const filledHexes = h3.polygonToCells(polygon, this.resolution, true);
+      const filledHexes = h3.polygonToCells(polygon as never, this.resolution, true);
 
       console.log(`Filling ${filledHexes.length} hexagons in the loop`);
 
@@ -885,19 +881,17 @@ export class TerritoryGame {
         ],
       ];
 
-      let hexagons: string[];
+      const hexagons: string[] = [];
 
       try {
         if (typeof h3.polygonToCells === "function") {
-          hexagons = h3.polygonToCells(bbox, this.resolution, true);
-        } else if (typeof (h3 as any).polyfill === "function") {
-          hexagons = (h3 as any).polyfill(bbox, this.resolution, true);
+          hexagons.push(...h3.polygonToCells(bbox, this.resolution, true));
         } else {
           throw new Error("H3 library not properly imported");
         }
       } catch (error) {
         console.error("H3 Error in expandGrid:", error);
-        hexagons = this.generateFallbackGrid(bounds);
+        hexagons.push(...this.generateFallbackGrid(bounds));
       }
 
       let newHexes = false;

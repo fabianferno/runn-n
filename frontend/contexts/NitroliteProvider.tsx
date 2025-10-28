@@ -137,7 +137,7 @@ export const NitroliteProvider: React.FC<NitroliteProviderProps> = ({ children }
     const appStateVersionRef = useRef<number>(2);
 
     // Message state
-    const [messages, setMessages] = useState<unknown[]>([]);    
+    const [messages, setMessages] = useState<unknown[]>([]);
     const [isSendingMessage, setIsSendingMessage] = useState(false);
 
     // Coordinates state
@@ -420,7 +420,7 @@ export const NitroliteProvider: React.FC<NitroliteProviderProps> = ({ children }
         };
 
         // Commented out - No token allocations required for now
-        const allocations: RPCAppSessionAllocation[] = [];
+        // const allocations: RPCAppSessionAllocation[] = [];
         // const allocations: RPCAppSessionAllocation[] = [
         //     {
         //         participant: account as `0x${string}`,
@@ -476,7 +476,7 @@ export const NitroliteProvider: React.FC<NitroliteProviderProps> = ({ children }
         try {
             const currentAppStateVersion = appStateVersionRef.current;
             appStateVersionRef.current += 1; // Increment immediately for next message
-            
+
             const messagePayload = await createSubmitAppStateMessage(sessionSigner, {
                 app_session_id: appSessionId as `0x${string}`,
                 intent: RPCAppStateIntent.Operate,
@@ -513,7 +513,7 @@ export const NitroliteProvider: React.FC<NitroliteProviderProps> = ({ children }
 
             console.log('🟡 Sending Nitrolite message via WebSocket [AppState v' + currentAppStateVersion + '] → Next: ' + appStateVersionRef.current);
             webSocketService.send(messagePayload);
-            
+
             // Reset flag immediately after send (don't wait for response)
             setTimeout(() => setIsSendingMessage(false), 100);
         } catch (error) {
@@ -535,7 +535,7 @@ export const NitroliteProvider: React.FC<NitroliteProviderProps> = ({ children }
         try {
             const currentAppStateVersion = appStateVersionRef.current;
             appStateVersionRef.current += 1; // Increment immediately for next message
-            
+
             let coordinatesData: { x: number; y: number;[key: string]: unknown } = { x, y };
 
             if (typeof payload === 'object' && payload !== null) {

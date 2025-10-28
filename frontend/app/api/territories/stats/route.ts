@@ -10,16 +10,16 @@ export async function GET(request: NextRequest) {
     let totalHexes = 0;
     const activeRegions = new Set<string>();
 
-    mockRegions.forEach((region: any) => {
+    mockRegions.forEach((region: {metadata: {hexCount: number}; _id: string}) => {
       totalHexes += region.metadata.hexCount;
       activeRegions.add(region._id);
     });
 
     // Create leaderboard
     const leaderboard = Array.from(mockUsers.values())
-      .sort((a: any, b: any) => b.stats.totalHexes - a.stats.totalHexes)
+      .sort((a: {stats: {totalHexes: number}}, b: {stats: {totalHexes: number}}) => b.stats.totalHexes - a.stats.totalHexes)
       .slice(0, 10)
-      .map((user: any, index: number) => ({
+      .map((user: {_id: string; color: string; stats: {totalHexes: number}}, index: number) => ({
         userId: user._id,
         color: user.color,
         hexCount: user.stats.totalHexes,
@@ -37,13 +37,13 @@ export async function GET(request: NextRequest) {
         lastUpdate: Date.now(),
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error getting stats:", error);
     return NextResponse.json(
       {
         success: false,
         error: "Internal server error",
-        details: error.message,
+        details: (error instanceof Error ? error.message : "Unknown error"),
       },
       { status: 500 }
     );

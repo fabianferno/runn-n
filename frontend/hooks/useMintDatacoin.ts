@@ -63,7 +63,7 @@ export function useMintDatacoin() {
       setState({ isLoading: false, error: null, data: result });
       return result;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Minting failed';
+      const errorMessage = error instanceof Error ? (error instanceof Error ? error.message : "Unknown error") : 'Minting failed';
       setState({ isLoading: false, error: errorMessage, data: null });
       throw error;
     }

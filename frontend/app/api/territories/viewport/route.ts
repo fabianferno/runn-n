@@ -51,13 +51,13 @@ export async function GET(request: NextRequest) {
       totalHexes: result.totalHexes,
       timestamp: Date.now(),
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error getting viewport territories:", error);
     return NextResponse.json(
       {
         success: false,
         error: "Internal server error",
-        details: error.message,
+        details: (error instanceof Error ? error.message : "Unknown error"),
       },
       { status: 500 }
     );

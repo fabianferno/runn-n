@@ -54,7 +54,7 @@ export const MessageInterface: React.FC = () => {
                 sendMessage(JSON.stringify(messageBody));
             },
             (error) => {
-                alert(`Error getting location: ${error.message}`);
+                alert(`Error getting location: ${(error instanceof Error ? error.message : "Unknown error")}`);
             }
         );
     };

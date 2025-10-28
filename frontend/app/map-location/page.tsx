@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from "react";
 
 export default function MapLocationPage() {
   const [currentLocation, setCurrentLocation] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [responseData, setResponseData] = useState<any>(null);
+  const [responseData, setResponseData] = useState<{latitude: number; longitude: number; httpbinResponse?: unknown; timestamp?: number} | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -49,6 +49,7 @@ export default function MapLocationPage() {
               latitude: latitude,
               longitude: longitude,
               httpbinResponse: data,
+              timestamp: Date.now(),
             });
           } catch (fetchErr) {
             console.error('❌ Failed to send to httpbin:', fetchErr);

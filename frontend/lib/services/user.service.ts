@@ -7,7 +7,7 @@ export class UserService {
   static async createOrGetUser(walletAddress: string) {
     try {
       // Check if user already exists
-      let user = await UserModel.findById(walletAddress);
+      const user = await UserModel.findById(walletAddress);
       
       if (user) {
         // Update lastActive timestamp

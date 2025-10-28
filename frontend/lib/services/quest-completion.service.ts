@@ -8,7 +8,7 @@ export class QuestCompletionService {
   static async registerCompletion(
     questId: string,
     userId: string
-  ): Promise<{ success: boolean; completionId?: string; error?: string; data?: any }> {
+  ): Promise<{ success: boolean; completionId?: string; error?: string; data?: {questId: string; dataCoinAddress: string; mintAmount: number; status: string} }> {
     try {
       // Get quest details
       const quest = await QuestModel.findById(questId);
@@ -37,9 +37,9 @@ export class QuestCompletionService {
       if (existingCompletion && existingCompletion.status === "pending") {
         return {
           success: true,
-          completionId: (existingCompletion._id as any).toString(),
+          completionId: (existingCompletion._id as {toString: () => string}).toString(),
           data: {
-            questId: (quest._id as any).toString(),
+            questId: (quest._id as {toString: () => string}).toString(),
             dataCoinAddress: quest.dataCoinAddress,
             mintAmount: this.calculateMintAmount(quest.difficulty),
             status: "pending",
@@ -65,19 +65,19 @@ export class QuestCompletionService {
 
       return {
         success: true,
-        completionId: (completion._id as any).toString(),
+        completionId: (completion._id as {toString: () => string}).toString(),
         data: {
-          questId: (quest._id as any).toString(),
+          questId: (quest._id as {toString: () => string}).toString(),
           dataCoinAddress: quest.dataCoinAddress,
           mintAmount,
           status: "pending",
         },
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error registering quest completion:", error);
       return {
         success: false,
-        error: error.message || "Failed to register completion",
+        error: (error instanceof Error ? error.message : "Unknown error") || "Failed to register completion",
       };
     }
   }
@@ -112,7 +112,7 @@ export class QuestCompletionService {
       return {
         success: true,
         completion: {
-          id: (completion._id as any).toString(),
+          id: (completion._id as {toString: () => string}).toString(),
           questId: completion.questId,
           userId: completion.userId,
           dataCoinAddress: completion.dataCoinAddress,
@@ -123,11 +123,11 @@ export class QuestCompletionService {
           createdAt: completion.createdAt,
         },
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error getting completion:", error);
       return {
         success: false,
-        error: error.message || "Failed to get completion",
+        error: (error instanceof Error ? error.message : "Unknown error") || "Failed to get completion",
       };
     }
   }
@@ -145,7 +145,7 @@ export class QuestCompletionService {
       return {
         success: true,
         completions: completions.map((c) => ({
-          id: (c._id as any).toString(),
+          id: (c._id as {toString: () => string}).toString(),
           questId: c.questId,
           dataCoinAddress: c.dataCoinAddress,
           mintAmount: c.mintAmount,
@@ -153,11 +153,11 @@ export class QuestCompletionService {
           createdAt: c.createdAt,
         })),
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error getting user completions:", error);
       return {
         success: false,
-        error: error.message || "Failed to get completions",
+        error: (error instanceof Error ? error.message : "Unknown error") || "Failed to get completions",
       };
     }
   }
@@ -177,11 +177,11 @@ export class QuestCompletionService {
       });
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error marking as minted:", error);
       return {
         success: false,
-        error: error.message || "Failed to update completion",
+        error: (error instanceof Error ? error.message : "Unknown error") || "Failed to update completion",
       };
     }
   }
@@ -200,11 +200,11 @@ export class QuestCompletionService {
       });
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error marking as failed:", error);
       return {
         success: false,
-        error: error.message || "Failed to update completion",
+        error: (error instanceof Error ? error.message : "Unknown error") || "Failed to update completion",
       };
     }
   }

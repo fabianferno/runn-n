@@ -4,12 +4,12 @@ import { QuestCompletionService } from "@/lib/services/quest-completion.service"
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { completionId: string } }
+  { params }: { params: Promise<{ completionId: string }> }
 ) {
   try {
     await connectDB();
-    
-    const { completionId } = params;
+
+    const { completionId } = await params;
     const { transactionHash } = await request.json();
 
     if (!transactionHash) {
@@ -32,15 +32,17 @@ export async function PATCH(
     }
 
     return NextResponse.json(result);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error marking as minted:", error);
     return NextResponse.json(
       {
         success: false,
-        error: error.message || "Failed to update completion",
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to update completion",
       },
       { status: 500 }
     );
   }
 }
-

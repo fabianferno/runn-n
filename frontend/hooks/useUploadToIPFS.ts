@@ -56,7 +56,7 @@ export function useUploadToIPFS() {
       setState({ isLoading: false, error: null, data: result });
       return result;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Upload failed';
+      const errorMessage = error instanceof Error ? (error instanceof Error ? error.message : "Unknown error") : 'Upload failed';
       setState({ isLoading: false, error: errorMessage, data: null });
       throw error;
     }

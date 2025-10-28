@@ -631,7 +631,7 @@ export async function GET(request: NextRequest) {
       {
         success: false,
         message: "Failed to fetch leaderboard",
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: error instanceof Error ? (error instanceof Error ? error.message : "Unknown error") : "Unknown error",
       },
       { status: 500 }
     );
@@ -740,7 +740,7 @@ export async function POST(request: NextRequest) {
       {
         success: false,
         message: "Failed to fetch user rank",
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: error instanceof Error ? (error instanceof Error ? error.message : "Unknown error") : "Unknown error",
       },
       { status: 500 }
     );

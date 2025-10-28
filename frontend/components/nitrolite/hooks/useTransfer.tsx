@@ -36,7 +36,7 @@ export const useTransfer = (sessionKey: SessionKey | null, isAuthenticated: bool
                 return { success: true };
             } catch (error) {
                 console.error('Failed to create transfer:', error);
-                const errorMsg = error instanceof Error ? error.message : 'Failed to create transfer';
+                const errorMsg = error instanceof Error ? (error instanceof Error ? error.message : "Unknown error") : 'Failed to create transfer';
                 return { success: false, error: errorMsg };
             }
         },

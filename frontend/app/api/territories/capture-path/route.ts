@@ -6,7 +6,7 @@ import { PathInput } from "@/types/backend";
 export async function POST(request: NextRequest) {
   try {
     await connectDB();
-    
+
     const input: PathInput = await request.json();
 
     if (!input.user || !input.color || !input.path) {
@@ -21,15 +21,19 @@ export async function POST(request: NextRequest) {
 
     const result = await PathService.processPath(input);
     return NextResponse.json(result);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error processing path:", error);
     return NextResponse.json(
       {
         success: false,
-        error: error.message || "Failed to process path",
+        error:
+          error instanceof Error
+            ? error instanceof Error
+              ? error.message
+              : "Unknown error"
+            : "Failed to process path",
       },
       { status: 500 }
     );
   }
 }
-

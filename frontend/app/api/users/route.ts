@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       { 
         message: 'Failed to fetch users',
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? (error instanceof Error ? error.message : "Unknown error") : 'Unknown error'
       },
       { status: 500 }
     );
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { 
         message: 'Failed to create user',
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? (error instanceof Error ? error.message : "Unknown error") : 'Unknown error'
       },
       { status: 500 }
     );

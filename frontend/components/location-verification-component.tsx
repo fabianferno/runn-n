@@ -19,7 +19,7 @@ interface Quest {
 
 interface LocationVerificationComponentProps {
   quest: Quest;
-  onVerified: (proofs: any) => void;
+  onVerified: (proofs: unknown) => void;
   onClose: () => void;
 }
 
@@ -29,7 +29,7 @@ export function LocationVerificationComponent({
   onClose 
 }: LocationVerificationComponentProps) {
   const [requestUrl, setRequestUrl] = useState('');
-  const [proofs, setProofs] = useState<any>(null);
+  const [proofs, setProofs] = useState<unknown>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [verificationStarted, setVerificationStarted] = useState(false);
@@ -64,7 +64,7 @@ export function LocationVerificationComponent({
       // Start listening for proof submissions
       await reclaimProofRequest.startSession({
         // Called when the user successfully completes the verification
-        onSuccess: async (proofs: any) => {
+        onSuccess: async (proofs: unknown) => {
           console.log('Location verification successful:', proofs);
           setProofs(proofs);
           
@@ -161,7 +161,7 @@ export function LocationVerificationComponent({
             📍 Verify Location
           </h3>
           <p className="text-sm text-muted-foreground">
-            Prove you're at: {quest.location}
+            Prove you&apos;re at: {quest.location}
           </p>
         </div>
 
@@ -203,7 +203,7 @@ export function LocationVerificationComponent({
             <div className="p-4 bg-white/5 rounded-lg">
               <h4 className="font-semibold text-foreground mb-2">Location Verification</h4>
               <p className="text-sm text-muted-foreground mb-3">
-                Click the button below to start location verification. This will use your device's location services to prove you're at the quest location.
+                  Click the button below to start location verification. This will use your device&apos;s location services to prove you&apos;re at the quest location.
               </p>
               <ul className="text-xs text-muted-foreground space-y-1">
                 <li>• Your location will be verified securely</li>
@@ -246,7 +246,7 @@ export function LocationVerificationComponent({
                 </button>
                 
                 <p className="text-xs text-muted-foreground">
-                  Scan QR code or click the link above to verify your location
+                  Scan QR code or click the link above to verify your location. If you&apos;re ready to go, it&apos;s time to start.
                 </p>
               </div>
             )}

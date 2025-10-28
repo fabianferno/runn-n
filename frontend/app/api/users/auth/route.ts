@@ -41,13 +41,13 @@ export async function POST(req: NextRequest) {
       user,
       message: user.stats.totalCaptures === 0 ? "New user created" : "User authenticated",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error authenticating user:", error);
     return NextResponse.json(
       {
         success: false,
         error: "Internal server error",
-        details: error.message,
+        details: (error instanceof Error ? error.message : "Unknown error"),
       },
       { status: 500 }
     );

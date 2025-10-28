@@ -4,13 +4,13 @@ import { UserModel } from "@/lib/models/user.model";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
     await connectDB();
-    
-    const { userId } = params;
-    
+
+    const { userId } = await params;
+
     // userId is the wallet address
     const user = await UserModel.findById(userId);
 
@@ -28,16 +28,15 @@ export async function GET(
       success: true,
       user,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error getting user:", error);
     return NextResponse.json(
       {
         success: false,
         error: "Internal server error",
-        details: error.message,
+        details: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 }
     );
   }
 }
-
